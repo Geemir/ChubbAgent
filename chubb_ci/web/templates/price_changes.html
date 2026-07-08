@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}价格变动{% endblock %}
+{% block content %}
+
+<div>
+  <h1 class="font-display-lg text-display-lg text-on-surface">价格变动</h1>
+  <p class="text-body-lg text-on-surface-variant mt-sm">竞争对手近 90 天的全部价格调整记录。</p>
+</div>
+
+<!-- Stat cards -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-md">
+  {% set stat_cards = [
+    ("变动总数", stats.total, "swap_vert", "text-on-surface"),
+    ("降价", stats.downs, "trending_down", "text-error"),
+    ("涨价", stats.ups, "trending_up", "text-secondary"),
+    ("平均变动", (stats.avg_pct|string) ~ "%", "percent", "text-tertiary-fixed-dim")
+  ] %}
+  {% for label, value, icon, color in stat_cards %}
+  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-28">
+    <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">{{ label }}</span>
+    <div class="flex items-end justify-between mt-auto">
+      <span class="font-display-lg text-display-lg font-semibold tabular-nums {{ color }}">{{ value }}</span>
+      <span class="material-symbols-outlined text-outline">{{ icon }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- Filters -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] grid grid-cols-1 md:grid-cols-3 gap-md">
+  <div class="md:col-span-1">
+    <label class="font-label-md text-label-md text-on-surface-variant">搜索</label>
+    <div class="relative mt-xs">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size:18px;">search</span>
+      <input id="pc-name" class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-secondary-fixed-dim" placeholder="按产品名称筛选…" type="text"/>
+    </div>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">竞争对手</label>
+    <select id="pc-company" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部竞争对手</option>
+      {% for c in companies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">方向</label>
+    <select id="pc-dir" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部</option>
+      <option value="down">降价</option>
+      <option value="up">涨价</option>
+    </select>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-md">日期</th>
+          <th class="text-left px-lg py-md">竞争对手</th>
+          <th class="text-left px-lg py-md">产品</th>
+          <th class="text-left px-lg py-md">渠道</th>
+          <th class="text-right px-lg py-md">原价</th>
+          <th class="text-right px-lg py-md">现价</th>
+          <th class="text-right px-lg py-md">变化</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="pc-row border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors"
+            data-name="{{ r.product_name|lower }}" data-company="{{ r.company }}"
+            data-dir="{{ 'down' if (r.pct_change is not none and r.pct_change < 0) else 'up' }}">
+          <td class="px-lg py-sm text-on-surface-variant font-body-sm text-body-sm tabular-nums">{{ r.date }}</td>
+          <td class="px-lg py-sm text-on-surface">{{ r.company }}</td>
+          <td class="px-lg py-sm text-on-surface font-medium">{{ r.product_name }}</td>
+          <td class="px-lg py-sm"><span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.channel or '官网' }}</span></td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant line-through">¥{{ r.old_value }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface font-medium">¥{{ r.new_value }}</td>
+          <td class="px-lg py-sm text-right">
+            {% if r.pct_change is not none %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-md tabular-nums {% if r.pct_change < 0 %}bg-error-container text-on-error-container{% else %}bg-secondary-container text-on-secondary-container{% endif %}">
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ 'south' if r.pct_change < 0 else 'north' }}</span>{{ '%.1f'|format(r.pct_change|abs) }}%
+            </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-lg py-md">
+    <span id="pc-count" class="font-body-sm text-body-sm text-on-surface-variant">共 {{ rows|length }} 条记录</span>
+  </div>
+  {% if not rows %}<p class="px-lg pb-lg text-on-surface-variant text-body-md">近 90 天暂无价格变动记录。</p>{% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>window.__initPriceChangeFilter && window.__initPriceChangeFilter();</script>
+{% endblock %}

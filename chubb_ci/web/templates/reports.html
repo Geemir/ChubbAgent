@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}每日报告{% endblock %}
+{% block content %}
+
+<div>
+  <h1 class="font-display-lg text-display-lg text-on-surface">每日报告：{{ report_date }}</h1>
+  <div class="flex items-center gap-sm mt-sm">
+    <span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings:'FILL' 1;">check_circle</span>
+    <p class="text-body-lg text-on-surface-variant">{{ summary_line }}</p>
+  </div>
+</div>
+
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+  <!-- Executive summary -->
+  <div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <div class="flex items-center justify-between mb-md">
+      <div class="flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary-container" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
+        <h2 class="font-headline-md text-headline-md text-on-surface">执行摘要</h2>
+      </div>
+      <span class="font-label-sm text-label-sm px-2 py-1 rounded-full bg-primary-container text-on-primary">AI 生成</span>
+    </div>
+    {% if report_md %}
+    <div id="report-content" class="prose-report flex-1 text-on-surface-variant overflow-y-auto max-h-[520px] pr-2"></div>
+    <script id="report-md" type="application/json">{{ report_md|tojson }}</script>
+    {% else %}
+    <p class="flex-1 text-on-surface-variant text-body-md py-lg">尚未生成报告。点击右上角「运行抓取」或执行 <code>chubb-ci crawl --kind daily --report</code>。</p>
+    {% endif %}
+    <div class="flex justify-end gap-sm pt-md mt-md border-t border-outline-variant/30">
+      <button onclick="window.print()" class="px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors">导出 PDF</button>
+      <a href="#price-moves" class="px-md py-2 rounded-lg bg-primary-container text-on-primary text-label-md hover:opacity-90 transition-opacity">查看完整分析</a>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="space-y-gutter">
+    <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex items-center justify-between">
+      <div>
+        <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">启用的抓取源</span>
+        <p class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums mt-xs">{{ active_crawlers.active }}/{{ active_crawlers.total }}</p>
+      </div>
+      <div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-secondary-container">radar</span>
+      </div>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-xl p-md border-l-4 border-error shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+      <div class="flex items-center justify-between mb-sm">
+        <span class="font-label-md text-label-md text-error uppercase tracking-wider">关键预警</span>
+        <span class="material-symbols-outlined text-error">warning</span>
+      </div>
+      {% if alerts %}
+        {% for a in alerts %}
+        <div class="mb-md">
+          <h4 class="font-body-lg font-medium text-on-surface">{{ a.title }}</h4>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{{ a.summary }}</p>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="font-body-sm text-body-sm text-on-surface-variant">本期无高危变化。</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- New products -->
+<section>
+  <h2 class="font-headline-lg text-headline-lg text-on-surface mb-md">检测到的新品（{{ new_products|length }}）</h2>
+  {% if new_products %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+    {% for p in new_products %}
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+      <div class="h-32 bg-gradient-to-br from-primary-container to-surface-tint flex items-center justify-center relative">
+        <span class="material-symbols-outlined text-on-primary/80" style="font-size:56px;">safe</span>
+        <span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm">{{ p.company }}</span>
+      </div>
+      <div class="p-md">
+        <h3 class="font-headline-md text-headline-md text-on-surface">{{ p.name }}</h3>
+        <div class="flex items-center justify-between mt-sm">
+          <span class="font-body-md text-on-surface font-semibold">{% if p.price %}¥{{ p.price }}{% else %}价格未知{% endif %}</span>
+          {% if p.url %}<a href="{{ p.url }}" target="_blank" class="material-symbols-outlined text-secondary" style="font-size:20px;">open_in_new</a>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-on-surface-variant text-body-md">本期未检测到新品。</p>
+  {% endif %}
+</section>
+
+<!-- Price movements + promotions -->
+<section id="price-moves" class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+  <div class="lg:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+    <div class="p-lg pb-md">
+      <h2 class="font-headline-md text-headline-md text-on-surface">显著价格变动（{{ price_moves|length }}）</h2>
+    </div>
+    {% if price_moves %}
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-sm">竞争对手</th>
+          <th class="text-left px-lg py-sm">产品</th>
+          <th class="text-right px-lg py-sm">原价</th>
+          <th class="text-right px-lg py-sm">现价</th>
+          <th class="text-right px-lg py-sm">变化</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in price_moves %}
+        <tr class="border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors">
+          <td class="px-lg py-sm text-on-surface">{{ r.company }}</td>
+          <td class="px-lg py-sm text-on-surface">{{ r.product_name }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{{ r.old_value or "—" }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface font-medium">{{ r.new_value or "—" }}</td>
+          <td class="px-lg py-sm text-right">
+            {% if r.pct_change is not none %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-md tabular-nums
+              {% if r.pct_change < 0 %}bg-error-container text-on-error-container{% else %}bg-secondary-container text-on-secondary-container{% endif %}">
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ 'south' if r.pct_change < 0 else 'north' }}</span>
+              {{ '%.1f'|format(r.pct_change|abs) }}%
+            </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="px-lg pb-lg text-on-surface-variant text-body-md">本期无价格变动。</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">进行中的促销</h2>
+    <div class="space-y-md">
+      {% if promotions %}
+        {% for p in promotions %}
+        <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-12 h-12 bg-tertiary-fixed-dim/20 rounded-bl-full -mr-2 -mt-2"></div>
+          <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{{ p.company }}</span>
+          <h3 class="font-headline-md text-headline-md text-on-surface mt-xs">{{ p.promotion }}</h3>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">{{ p.product_name }}</p>
+          {% if p.url %}<a href="{{ p.url }}" target="_blank" class="inline-flex items-center gap-1 mt-sm text-secondary font-label-md text-label-md hover:underline">查看来源 <span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span></a>{% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-on-surface-variant text-body-md">本期无促销活动。</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  var mdEl = document.getElementById('report-md');
+  if (mdEl && window.marked) {
+    document.getElementById('report-content').innerHTML = marked.parse(JSON.parse(mdEl.textContent));
+  }
+</script>
+{% endblock %}

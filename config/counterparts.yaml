@@ -1,0 +1,48 @@
+# =========================================================================
+# 对标 (head-to-head) pairs: our model ↔ competitor functional counterpart.
+# Names are matched via normalized product keys, so minor punctuation/spacing
+# differences are tolerated. Edit freely; re-seed with `chubb-ci seed-demo`
+# or they are matched live against the latest crawled products.
+# =========================================================================
+
+version: 1
+
+pairs:
+  # --- vs 永发 (demo-seeded + crawled) ------------------------------------
+  - own_product: Viper梵客 35
+    comp_company: 永发 Yongfa
+    comp_product: 永发 家用指纹保险柜
+    note: 入门家用电子/指纹柜功能对标
+
+  - own_product: Viper梵客 50
+    comp_company: 永发 Yongfa
+    comp_product: 永发 商用大型保险柜
+    note: 中型商用对标
+
+  # --- vs 迪堡 (demo-seeded) ----------------------------------------------
+  - own_product: Firefile M-135
+    comp_company: 迪堡 Diebold
+    comp_product: 迪堡 金融机具保险柜
+    note: 防火/商用金融场景对标
+
+  # --- vs 艾谱 (demo-seeded) ----------------------------------------------
+  - own_product: Viper梵客 35
+    comp_company: 艾谱 AIPU
+    comp_product: 艾谱 FDX-A/D-30 指纹保险箱
+    note: 家用指纹箱直接对标
+
+  # --- 来自竞品分析 PPTX 的官方对标 (分析报告 channel) ----------------------
+  - own_product: Viper梵客 35
+    comp_company: 德国百卫特 Burg Wächter
+    comp_product: CL系列
+    note: PPTX 明确标注「欧标防盗防火，与viper对标」
+
+  - own_product: Firefile M-135
+    comp_company: 艾谱 AIPU
+    comp_product: 诺盾系列
+    note: PPTX 标注「防火功能接近集宝」（国标120分钟防火）
+
+  - own_product: Firefile M-135
+    comp_company: 盾牌 Dunpai
+    comp_product: 帝尚系列
+    note: PPTX 标注「防火功能接近集宝」（UL 60min + CSP 防盗）

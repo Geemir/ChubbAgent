@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} · 品牌档案{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-md">
+  <a href="/competitors" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+    <span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+  </a>
+  <div class="w-14 h-14 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-lg">{{ name[:1] }}</div>
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">{{ name }}</h1>
+    {% if brand and brand.competition_tier %}
+    <span class="inline-block mt-xs px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">{{ brand.competition_tier }}</span>
+    {% endif %}
+  </div>
+  <div class="ml-auto flex items-center gap-md">
+    <button onclick="__toggleFocus('{{ name }}', this)"
+            class="flex items-center gap-sm px-md py-2 rounded-lg border {% if brand and brand.is_focus %}bg-tertiary-fixed border-tertiary-fixed-dim text-on-tertiary-fixed{% else %}border-outline-variant text-on-surface-variant hover:bg-surface-container-high{% endif %} transition-colors font-label-md text-label-md">
+      <span class="material-symbols-outlined" style="font-size:18px;{% if brand and brand.is_focus %}font-variation-settings:'FILL' 1;{% endif %}">star</span>
+      {% if brand and brand.is_focus %}重点关注中{% else %}标记重点关注{% endif %}
+    </button>
+    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
+      <div class="font-display-lg text-display-lg text-on-surface tabular-nums leading-none">{{ num_products }}</div>
+      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">在监产品</div>
+    </div>
+  </div>
+</div>
+
+{% if brand %}
+<!-- Strategic profile -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+  <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] space-y-md">
+    <div>
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">品牌定位</h3>
+      <p class="font-body-lg text-on-surface">{{ brand.positioning or "—" }}</p>
+    </div>
+    <div>
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">核心客群</h3>
+      <p class="font-body-md text-on-surface-variant">{{ brand.target_audience or "—" }}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-md pt-sm">
+      <div class="bg-surface-container-low rounded-lg p-md">
+        <h4 class="flex items-center gap-1 font-label-md text-label-md text-on-secondary-container uppercase tracking-wider mb-sm"><span class="material-symbols-outlined" style="font-size:16px;">thumb_up</span>核心优势</h4>
+        <ul class="space-y-xs">
+          {% for s in brand.strengths %}<li class="font-body-sm text-body-sm text-on-surface">· {{ s }}</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="bg-surface-container-low rounded-lg p-md">
+        <h4 class="flex items-center gap-1 font-label-md text-label-md text-on-error-container uppercase tracking-wider mb-sm"><span class="material-symbols-outlined" style="font-size:16px;">thumb_down</span>品牌短板</h4>
+        <ul class="space-y-xs">
+          {% for s in brand.shortcomings %}<li class="font-body-sm text-body-sm text-on-surface">· {{ s }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] space-y-md">
+    <div>
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">规模与销量</h3>
+      <p class="font-body-md text-on-surface">{{ brand.market_scale or "—" }}</p>
+    </div>
+    <div>
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">供应链与产地</h3>
+      <p class="font-body-md text-on-surface">{{ brand.supply_chain or "—" }}</p>
+    </div>
+    <div>
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">售后质保</h3>
+      <p class="font-body-md text-on-surface">{{ brand.warranty or "—" }}</p>
+    </div>
+  </div>
+</section>
+
+<!-- Price architecture -->
+{% if brand.price_architecture %}
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+  <h2 class="font-headline-md text-headline-md text-on-surface mb-md">产品系列与价格带</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-md">
+    {% for p in brand.price_architecture %}
+    <div class="bg-surface-container-low rounded-lg p-md border border-outline-variant/20">
+      <h4 class="font-body-lg font-medium text-on-surface">{{ p.series }}</h4>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{{ p.desc }}</p>
+      <span class="inline-block mt-sm px-2 py-0.5 rounded bg-tertiary-fixed/40 text-on-tertiary-fixed font-label-sm text-label-sm tabular-nums">{{ p.price_range }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% else %}
+<div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30">
+  <p class="text-on-surface-variant text-body-md">该公司暂无品牌档案。可在 <code>config/brands.yaml</code> 补充后运行 <code>chubb-ci sync-brands</code>。</p>
+</div>
+{% endif %}
+
+<!-- Monitored products -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="p-lg pb-md"><h2 class="font-headline-md text-headline-md text-on-surface">在监产品（{{ num_products }}）</h2></div>
+  {% if products %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-sm">产品</th>
+          <th class="text-left px-lg py-sm">系列</th>
+          <th class="text-left px-lg py-sm">品类</th>
+          <th class="text-right px-lg py-sm">价格</th>
+          <th class="text-right px-lg py-sm">容积L</th>
+          <th class="text-right px-lg py-sm">防火h</th>
+          <th class="text-right px-lg py-sm">防盗分</th>
+          <th class="text-left px-lg py-sm">促销</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr class="border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors">
+          <td class="px-lg py-sm text-on-surface font-medium">{% if p.source_url %}<a class="hover:underline" href="{{ p.source_url }}" target="_blank">{{ p.product_name }}</a>{% else %}{{ p.product_name }}{% endif %}</td>
+          <td class="px-lg py-sm text-on-surface-variant">{{ p.series or "—" }}</td>
+          <td class="px-lg py-sm text-on-surface-variant">{{ p.category or "—" }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface">{% if p.price %}¥{{ '{:,.0f}'.format(p.price) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{{ p.capacity_l or "—" }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{{ p.fire_hours or "—" }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{{ p.security_score or "—" }}</td>
+          <td class="px-lg py-sm">{% if p.promotion %}<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm">{{ p.promotion }}</span>{% else %}<span class="text-on-surface-variant">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="px-lg pb-lg text-on-surface-variant text-body-md">暂无抓取到的产品数据。</p>
+  {% endif %}
+</section>
+
+{% endblock %}

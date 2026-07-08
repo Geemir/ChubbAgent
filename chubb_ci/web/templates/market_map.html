@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}市场地图{% endblock %}
+{% block content %}
+
+<div>
+  <h1 class="font-display-lg text-display-lg text-on-surface">市场地图</h1>
+  <p class="text-body-lg text-on-surface-variant mt-sm">容量×价格分布、容量段价格带矩阵与品牌四象限（集宝以黄色高亮）。</p>
+</div>
+
+{% if map.own_count == 0 and not map.scatter %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <span class="material-symbols-outlined text-outline" style="font-size:48px;">scatter_plot</span>
+  <p class="text-on-surface-variant text-body-lg mt-md">暂无带价格与容量的数据。运行 <code>chubb-ci seed-demo</code> 或导入目录后查看。</p>
+</div>
+{% else %}
+
+<!-- Capacity × Price scatter -->
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+  <div class="flex items-center justify-between mb-md">
+    <h2 class="font-headline-md text-headline-md text-on-surface">容量 × 价格 散点图</h2>
+    <span class="font-body-sm text-body-sm text-on-surface-variant">X = 容积 (L) ｜ Y = 零售价 (¥, 对数轴)</span>
+  </div>
+  <div class="flex-1 min-h-[420px]"><canvas id="capacityScatter"></canvas></div>
+</section>
+
+<!-- Capacity-band matrix -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="p-lg pb-md flex items-center justify-between">
+    <h2 class="font-headline-md text-headline-md text-on-surface">容量段价格带矩阵</h2>
+    <span class="font-body-sm text-body-sm text-on-surface-variant">竞品在售 &lt; 3 款的容量段标记为市场空档</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-md">容量段</th>
+          <th class="text-right px-lg py-md">竞品数量</th>
+          <th class="text-right px-lg py-md">竞品均价</th>
+          <th class="text-right px-lg py-md">竞品最低</th>
+          <th class="text-right px-lg py-md">竞品最高</th>
+          <th class="text-right px-lg py-md">我司数量</th>
+          <th class="text-right px-lg py-md">我司均价</th>
+          <th class="text-right px-lg py-md">溢价</th>
+          <th class="text-left px-lg py-md">信号</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in map.bands %}
+        <tr class="border-b border-outline-variant/40 {% if b.is_gap %}bg-tertiary-fixed/20{% endif %} hover:bg-secondary-fixed/40 transition-colors">
+          <td class="px-lg py-sm text-on-surface font-medium">{{ b.label }}</td>
+          <td class="px-lg py-sm text-right tabular-nums {% if b.is_gap %}text-tertiary-fixed-dim font-semibold{% else %}text-on-surface{% endif %}">{{ b.comp_count }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface">{% if b.comp_avg %}¥{{ '{:,.0f}'.format(b.comp_avg) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{% if b.comp_min %}¥{{ '{:,.0f}'.format(b.comp_min) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{% if b.comp_max %}¥{{ '{:,.0f}'.format(b.comp_max) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface">{{ b.own_count }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface font-medium">{% if b.own_avg %}¥{{ '{:,.0f}'.format(b.own_avg) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums">{% if b.premium_pct is not none %}<span class="{% if b.premium_pct > 0 %}text-secondary{% else %}text-error{% endif %}">{{ '%+.1f'|format(b.premium_pct) }}%</span>{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm">
+            {% if b.is_gap %}<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm"><span class="material-symbols-outlined" style="font-size:14px;">lightbulb</span>市场空档</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Brand quadrant -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <div class="flex items-center justify-between mb-md">
+      <h2 class="font-headline-md text-headline-md text-on-surface">品牌四象限矩阵</h2>
+      <span class="font-body-sm text-body-sm text-on-surface-variant">X = 品牌均价 (¥, 对数轴) ｜ Y = 防盗等级分均值 ｜ 气泡 = 在售数量</span>
+    </div>
+    <div class="flex-1 min-h-[360px]"><canvas id="quadChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">象限解读</h2>
+    <ul class="space-y-md font-body-md text-on-surface-variant">
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-secondary" style="font-size:20px;">north_east</span>右上：高价格 + 高防护 — 集宝的目标象限（硬核认证支撑溢价）。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">south_east</span>右下：高价格 + 低防护 — 设计/生活方式品牌（Agresti 型），以美学而非认证溢价。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">north_west</span>左上：低价格 + 高防护 — 性价比威胁区，需用服务与品牌资产防守。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">south_west</span>左下：低价格 + 低防护 — 入门走量市场（国货主力段）。</li>
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script id="map-data" type="application/json">{{ map|tojson }}</script>
+<script>
+  window.__marketMap = JSON.parse(document.getElementById('map-data').textContent);
+  window.__initMarketMap && window.__initMarketMap();
+</script>
+{% endblock %}

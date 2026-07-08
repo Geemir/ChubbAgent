@@ -1,0 +1,166 @@
+# =========================================================================
+# Competitor monitoring sources.  Add a competitor = add a block here.
+# NO code change required.  Loaded by chubb_ci/config/sources.py
+#
+# Fields per source:
+#   name        unique id (stable; used to track a page over time)
+#   company     competitor / brand display name
+#   enabled     true/false
+#   fetcher     static | browser | local
+#                 static  = httpx (fast; brand 官网, static pages)
+#                 browser = Playwright (JS / marketplace pages; needs `browser` extra)
+#                 local   = read an HTML file from disk (demos / offline tests)
+#   page_type   product | pricing | campaign | news
+#   channel     官网 | 天猫 | 京东 | 拼多多 | 线下 | 其他
+#   frequency   daily | weekly | manual   (scheduler runs daily/weekly cadences)
+#   urls        one or more page URLs (or local file paths for fetcher=local)
+#   selectors   OPTIONAL css hints passed to the extractor as guidance
+#   notes       free text
+#
+# NOTE on the China market: brand 官网 are product-catalog / news sites and usually do
+# NOT list prices — great for tracking product line-ups, new series and news. PRICES and
+# PROMOTIONS live on the marketplaces (天猫 / 京东), which are JS-heavy + anti-bot, so those
+# are configured as `browser` sources (best-effort) and disabled until Playwright is set up:
+#   uv sync --extra browser && uv run playwright install chromium
+# =========================================================================
+
+version: 1
+
+defaults:
+  currency: CNY
+  fetcher: static
+  frequency: daily
+  page_type: product
+
+sources:
+  # ============================ VERIFIED 官网 (live) ========================
+  # 永发 Yongfa — Ningbo Yongfa Group, landmark CN safe brand. Static, UTF-8. Verified.
+  - name: yongfa-products
+    company: 永发 Yongfa
+    enabled: true
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: daily
+    urls:
+      - https://www.yongfagroup.com/products.html
+    notes: 产品中心（保险柜/防火箱/金库门/枪柜等系列）。官网不含价格，用于产品线与新品监控。
+
+  - name: yongfa-news
+    company: 永发 Yongfa
+    enabled: true
+    fetcher: static
+    page_type: news
+    channel: 官网
+    frequency: weekly
+    urls:
+      - https://www.yongfagroup.com/news.html
+    notes: 永发动态/工程案例（新品、活动、工程中标等信号）。
+
+  # 迪堡 Diebold — 迪堡智能安防 (dieboldsafe.com.cn / 上海迪堡). Static, UTF-8. Verified.
+  - name: diebold-products
+    company: 迪堡 Diebold
+    enabled: true
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: daily
+    urls:
+      - http://dieboldsafe.com.cn/
+    notes: 智能保险柜/保管箱/摇表器保险柜/床头柜等高端系列。HTTP only（证书过期）；httpx 走 HTTP 正常。
+
+  # ============== PPTX 重点品牌 官网 (verify URL, then enable) ===============
+  - name: burgwachter-global
+    company: 德国百卫特 Burg Wächter
+    enabled: false
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    urls:
+      - https://www.burg.biz/
+    notes: 重点关注竞品（PPTX 直接对标 Viper）。全球官网；中国渠道以京东/天猫为主，请核实后启用。
+
+  - name: sentrysafe-official
+    company: 善卫 SentrySafe
+    enabled: false
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    urls:
+      - https://www.sentrysafe.com/
+    notes: 美国官网（防火/防水箱产品线）。国内价格在电商渠道；请核实可达性后启用。
+
+  - name: format-official
+    company: 福美德 Format
+    enabled: false
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    urls:
+      - https://www.format-tresorbau.de/
+    notes: 德国官网（定制系列）。请核实后启用。
+
+  # ==================== MARKETPLACE (prices) — via 苏宁 search ================
+  # 实测结论（2026-07）：京东搜索/移动端已强制登录墙；苏宁搜索页可稳定渲染价格
+  # （需 browser fetcher 的懒加载滚动）。抽取提示词只保留归属该品牌的商品。
+  # Anti-bot is handled gracefully (status=blocked → logged & skipped).
+  - name: deli-suning-search
+    company: 得力 Deli
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E5%BE%97%E5%8A%9B%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    notes: 苏宁搜索「得力保险柜」。实测有价格瓦片；得力在苏宁品牌筛选中确认在售。
+
+  - name: aipu-suning-search
+    company: 艾谱 AIPU
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E8%89%BE%E8%B0%B1%E4%BF%9D%E9%99%A9%E7%AE%B1/
+    notes: 苏宁搜索「艾谱保险箱」。
+
+  - name: tiger-suning-search
+    company: 虎牌 Tiger
+    enabled: false
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E8%99%8E%E7%89%8C%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    notes: 苏宁搜索「虎牌保险柜」。苏宁在售品牌为「虎王」，虎牌存在性待确认后启用。
+
+  # 京东搜索需登录（2026-07 实测手机号验证墙），保留模板等待 cookie 方案。
+  - name: yongfa-jd-search
+    company: 永发 Yongfa
+    enabled: false
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E6%B0%B8%E5%8F%91%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
+    notes: 京东搜索登录墙（实测 blocked，管道会优雅跳过）。生产方案：注入企业账号 cookie 后启用。
+
+  # ============================== OFFLINE DEMO =============================
+  # frequency=manual → excluded from scheduled daily/weekly runs. Used by `crawl --demo`.
+  - name: demo-local-competitor
+    company: 演示竞品 Demo
+    enabled: true
+    fetcher: local
+    page_type: product
+    channel: 官网
+    frequency: manual
+    urls:
+      - tests/fixtures/competitor_v1.html
+    notes: 离线演示源（`chubb-ci crawl --demo`）。不参与定时抓取。

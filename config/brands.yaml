@@ -1,0 +1,235 @@
+# =========================================================================
+# Brand strategic profiles (品牌档案) — from the marketing competitive framework
+# (AnalyzeInformation.md §6). Sync into the DB with:  chubb-ci sync-brands
+# Editable without code changes; re-sync is an idempotent upsert by `name`.
+# =========================================================================
+
+version: 1
+
+brands:
+  - name: 集宝 ChubbSafes
+    name_en: ChubbSafes
+    is_own: true
+    positioning: 英国皇室御用品牌传承 + 高端安全存储；硬核物理认证（EN/VdS/UL）与专业防护为核心。
+    competition_tier: 本品牌（基准）
+    target_audience: 高净值人群、别墅豪宅业主、珠宝奢侈品店、银行金融机构。
+    strengths:
+      - 1818 年英国 Chubb 传承，皇室御用品牌背书
+      - EN 1143-1 全系列 0-6 级认证 + ECB·S 小蓝标
+      - 国内现货交付（订货周期 0 天）——渠道隐性竞争力
+      - 三年免费保修、终身售后、全国联保
+    shortcomings:
+      - 智能化功能（APP/AI）迭代慢于国产智能品牌
+      - 国内大众市场品牌认知度低于永发等国货
+    price_architecture:
+      - series: 经典系列（欧泊/摩根/塔菲/瑞诺/雅宝）
+        desc: 专业级欧标防盗
+        price_range: 1.2万–15万+ RMB
+      - series: 轻奢系列（铂雅/梵雅/隽雅/宣雅/居雅/佩伦）
+        desc: 高端家用轻奢
+        price_range: 1万–8万 RMB
+      - series: 防火柜系列（Firefile/Lateral/DPC）
+        desc: UL 60–120min 防火
+        price_range: 3万–13万 RMB
+    market_scale: 固力保集团旗下，全球 5 大生产基地、22 个办公网点；昆山工厂本地化生产。
+    supply_chain: 母公司瑞典 Gunnebo；中国昆山生产基地，国内现货库存。
+    warranty: 三年免费保修，终身售后服务，全国联保。
+
+  - name: 德国百卫特 Burg Wächter
+    name_en: Burg Wächter
+    focus: true   # 直接功能竞争 → 默认重点关注
+    positioning: 德国精工 + 高性价比的半同源进口品牌，与集宝正面功能竞争。
+    competition_tier: 直接功能竞争（front-line functional competition）
+    target_audience: 中低收入家庭与中产买家——认德国制造但预算有限。
+    strengths:
+      - 德国精密锁具与工程能力
+      - 南京组装中心带来本地化成本优势，价格竞争力强
+    shortcomings:
+      - 高端品牌感知落后于集宝
+      - 定制能力弱
+      - 第三方经销商售后质量参差不齐
+    price_architecture:
+      - series: Mango 系列
+        desc: 德产家用；55mm 柜体、25mm 实心锁栓；EN1143-1 Grade 0 + EN1300 A 级锁
+        price_range: 2000–2500+ RMB
+      - series: HomeSafe 系列
+        desc: 入门家用；30mm 钢体、5mm 门板；VdS Class 1 锁具认证
+        price_range: 2000–2500+ RMB
+      - series: CL/DS 系列
+        desc: 高端商用；52mm 防钻钢板、16mm 门板；欧标 S2 防盗 + 30min 防火
+        price_range: 3800–6000 RMB
+      - series: Pointsafe / Pure 系列
+        desc: 入门线，无专业防盗/防火认证
+        price_range: 500–700 RMB
+    market_scale: 欧洲市场领导者；国内高端年销量约 2 万台；全球年销量超 50 万台（2024）。
+    supply_chain: 锁匠世家出身；核心部件德国进口，南京完成组装。
+    warranty: 国内 3 年质保，核心部件终身维护，全国上门安装/维修。
+
+  - name: 福美德 Format
+    name_en: Format
+    positioning: “随心定制”高端定制 + 精英级安防，高端定制竞争者。
+    competition_tier: 高端定制竞争（bespoke segment）
+    target_audience: 超高净值人群、名表珠宝藏家、豪宅业主——需要定制内饰。
+    strengths:
+      - 德国血统与完善的全球认证测试
+      - 内部布局/抽屉/皮质高度可定制而外形规格统一
+    shortcomings:
+      - 价格极高
+      - 定制生产导致交货周期长
+      - 国内售后依赖跨境发件，响应慢
+    price_architecture:
+      - series: THF 系列
+        desc: 电商走量款；UL 60min 防火；无防盗认证
+        price_range: 5000+ RMB
+      - series: PSL / TAURUS 系列
+        desc: 30–60min 防火；欧标 S2 防盗；皮质定制
+        price_range: 1万–3.3万 RMB
+      - series: PSP / Athens / Count Knight 系列
+        desc: 60min 防火；欧标 Grade I 防盗
+        price_range: 4.7万–9万+ RMB
+      - series: DLW 系列
+        desc: UL 90min 防火；定制内衬
+        price_range: 10万+ RMB
+      - series: Dior / 定制系列
+        desc: 超奢材质与美学
+        price_range: 6.7万–10万+ RMB
+    market_scale: 欧洲主要品牌；国内高端定制年销量约 8000 台。
+    supply_chain: 总部德国；核心部件进口，国内定制设计与组装。
+    warranty: 3 年质保，终身维护，VIP 专属售后通道。
+
+  - name: 艾斐堡 Afeibao
+    name_en: Afeibao
+    positioning: “智能创新”——以 AI 数字功能与专业内部收纳分流智能需求买家。
+    competition_tier: 智能细分市场分流（smart segment diversion）
+    target_audience: 富裕年轻买家与奢侈品藏家——重科技功能、APP、专业收纳，轻安防传承。
+    strengths:
+      - AI 驱动的智能安防功能丰富
+      - 恒温恒湿定制化奢侈品存储方案
+    shortcomings:
+      - 缺乏高端品牌资产
+      - 物理防护结构无技术护城河
+    price_architecture:
+      - series: 宝格丽系列（2026 限量版）
+        desc: 10mm 实心钢体 + 6mm 防钻芯板
+        price_range: 未公开
+    market_scale: 国内智能细分市场品牌。
+    supply_chain: 国内生产。
+    warranty: 常规国内质保。
+
+  - name: 永发 Yongfa
+    name_en: Yongfa
+    focus: true   # 国内主流替代 + 已有实时抓取源 → 默认重点关注
+    positioning: “老牌国货”——基础安防 + 智能功能 + 高性价比的国产主流替代品牌。
+    competition_tier: 入门级国产替代（entry-level domestic substitution）
+    target_audience: 主流中产家庭（三四线为主）及一二线基础安防需求家庭；价格敏感、认品牌熟悉度，低定制兴趣。
+    strengths:
+      - 国内大众品牌知名度极高
+      - 售后服务网络全国全覆盖
+      - 端到端供应链，品控稳定
+    shortcomings:
+      - 缺乏高端品牌资产
+      - 核心物理防护与国际高端品牌差距明显
+    price_architecture:
+      - series: 经典系列
+        desc: 入门级；6mm 柜体、C 级锁芯、3C 认证、30min 防火
+        price_range: 400 RMB 起（灵动入门线）
+      - series: 领君3系列
+        desc: 国产高端智能线；10mm 柜体、6mm 防钻板、专利防撬锁栓
+        price_range: 中高端
+      - series: 诺盾系列
+        desc: 3C 认证；国标 120min 防火
+        price_range: 1700–5800 RMB
+      - series: 尊悦/豪雅 奢华系列
+        desc: 奢华定制
+        price_range: 最高 15.7万 RMB（豪雅 2.0）
+    market_scale: 10+ 标准系列（灵智/灵动/灵尚/博睿/诺盾/斯派等）+ 奢华系列；国内标志性品牌。
+    supply_chain: 宁波永发集团，1988 年创立；端到端自有供应链。
+    warranty: 全国售后服务网络全覆盖。
+
+  - name: Agresti
+    name_en: Agresti
+    positioning: “高奢竞争”——极致安防 + 古典美学 + 高级藏品的意大利手工定制。
+    competition_tier: 超高奢/艺术定制竞争（ultra-luxury bespoke）
+    target_audience: 超富裕藏家、顶级珠宝名表鉴赏家、星级酒店与私人会所——预算无上限。
+    strengths:
+      - 佛罗伦萨手工制作；名贵木材（桃花心木/乌木）+ 手工编织皮革
+      - 尺寸/材质/内部抽屉近乎无限定制
+      - 75 年传承，社交与身份价值高
+    shortcomings:
+      - 价格高不可攀（入门约 1.8万，定制轻松超 10万–150万 RMB），受众极窄
+      - 纯手工海外制作导致交货周期长
+      - 无国内工厂，售后依赖国际发件
+    price_architecture:
+      - series: SEGRETO 系列
+        desc: 定制摇表器、可延展项链架、榆木抽屉、24K 镀金五金、触屏/指纹锁
+        price_range: 定制报价
+      - series: Forziere 系列
+        desc: 红影木/乌木/鸟眼枫木外饰、牛皮把手、24K 镀金五金、6 珠宝抽屉、99 枚指纹
+        price_range: 13万–150万 RMB
+      - series: Gioia 系列
+        desc: 鸟眼亮光枫木、家具柜伪装外观内置隐藏保险柜、顶部化妆镜
+        price_range: 定制报价
+      - series: 配件
+        desc: 珠宝展示柜与配件（11 款珠宝柜）
+        price_range: 5千–8万 RMB
+    market_scale: 21 款保险柜 + 11 款珠宝展示柜及配件。
+    supply_chain: 意大利全程制造，跨境代理分销。
+    warranty: 依赖国际配件发运，本地售后弱。
+
+  # --- 以下两个品牌来自竞品分析 PPTX（保险柜市场竞品分析V7），非 §6 档案 ---
+  - name: 善卫 SentrySafe
+    name_en: SentrySafe
+    positioning: “防火专家”——美国防火保险箱专业品牌，主打 UL 防火 + ETL 防水认证。
+    competition_tier: 防火细分市场竞争
+    target_audience: 重视文件/数据防火防水保护的家庭与小型办公用户。
+    strengths:
+      - UL 防火 2 小时 + ETL 防水 24 小时双认证
+      - 美国防火箱细分市场知名度高
+    shortcomings:
+      - 防盗等级与高端定制能力有限
+      - 国内渠道与售后覆盖薄弱
+    price_architecture:
+      - series: STW 系列
+        desc: UL防火2H + ETL防水24H
+        price_range: 7300+ RMB
+    market_scale: 美国防火箱专业品牌，国内以电商渠道为主。
+    supply_chain: 美国品牌，跨境/电商渠道销售。
+    warranty: 依赖电商渠道售后。
+
+  - name: 盾牌 Dunpai
+    name_en: Dunpai
+    positioning: “防火王者”——国产防火防水箱专业品牌，防火防水箱电商销量领先。
+    competition_tier: 防火细分市场竞争（国产）
+    target_audience: 价格敏感、重防火防水的家庭用户与小微企业。
+    strengths:
+      - UL 防火 + SGS 防水认证组合，防火防水箱销量第一
+      - 电商渠道运营能力强
+    shortcomings:
+      - 高端市场品牌力不足
+      - 防盗认证与高安防产品线薄弱
+    price_architecture:
+      - series: 逸尚系列
+        desc: UL 1h 防火 + SGS 8h 防水
+        price_range: 1200+ RMB
+      - series: 帝尚系列
+        desc: UL 60min 防火 + CSP 防盗认证
+        price_range: 560–22000+ RMB
+    market_scale: 国产防火防水箱头部电商品牌。
+    supply_chain: 国内生产，电商为主。
+    warranty: 常规国内质保。
+
+  - name: Buben & Zorweg
+    name_en: Buben & Zorweg (B&Z)
+    positioning: “高端创新/高奢设计”——前卫设计理念 + 奢华材质，面向顶级腕表藏家的心理与收藏需求。
+    competition_tier: 高奢设计竞争（luxury design segment）
+    target_audience: 顶级腕表收藏家与鉴赏家。
+    strengths:
+      - 前卫设计与奢华材质结合
+      - 腕表收藏生态（摇表器/展示）深度整合
+    shortcomings:
+      - 极窄受众
+      - 国内渠道与售后有限
+    price_architecture: []
+    market_scale: 高奢细分品牌。
+    supply_chain: 欧洲制造，跨境分销。
+    warranty: 依赖进口渠道。

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}对标分析{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">对标分析</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">我司产品与竞品功能对标：价格差、容积差、周期差与性价比指数（系统计算）。</p>
+  </div>
+  <div class="flex items-center gap-md">
+    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
+      <div class="font-display-lg text-display-lg text-on-surface tabular-nums leading-none">{{ own_count }}</div>
+      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">集宝在售型号</div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
+      <div class="font-display-lg text-display-lg text-tertiary-fixed-dim tabular-nums leading-none">{{ pair_count }}</div>
+      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">对标配对</div>
+    </div>
+  </div>
+</div>
+
+{% if own_count == 0 %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <span class="material-symbols-outlined text-outline" style="font-size:48px;">upload_file</span>
+  <p class="text-on-surface-variant text-body-lg mt-md">尚未导入集宝产品目录。运行 <code>chubb-ci import-catalog ChubbProductsList.xlsx</code> 后即可进行对标分析。</p>
+</div>
+{% elif not rows %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <span class="material-symbols-outlined text-outline" style="font-size:48px;">compare_arrows</span>
+  <p class="text-on-surface-variant text-body-lg mt-md">暂无可计算的对标配对。请在 <code>config/counterparts.yaml</code> 配置我司型号与竞品的对应关系（需竞品数据已抓取入库）。</p>
+</div>
+{% else %}
+
+<div class="space-y-gutter">
+  {% for r in rows %}
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+    <!-- Pair header -->
+    <div class="flex flex-col md:flex-row md:items-center gap-sm px-lg py-md bg-surface-container-low border-b border-outline-variant/30">
+      <div class="flex items-center gap-sm">
+        <span class="px-2 py-0.5 rounded bg-primary-container text-on-primary font-label-sm text-label-sm">集宝</span>
+        <span class="font-headline-md text-headline-md text-on-surface">{{ r.own_name }}</span>
+        {% if r.own_series %}<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.own_series }}</span>{% endif %}
+      </div>
+      <span class="material-symbols-outlined text-outline mx-sm hidden md:block">sync_alt</span>
+      <div class="flex items-center gap-sm">
+        <span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">{{ r.comp_company }}</span>
+        <span class="font-headline-md text-headline-md text-on-surface">{{ r.comp_name }}</span>
+      </div>
+      {% if r.note %}<span class="md:ml-auto font-body-sm text-body-sm text-on-surface-variant">{{ r.note }}</span>{% endif %}
+    </div>
+
+    <!-- Metrics grid -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-outline-variant/20">
+      <!-- 价格差 -->
+      <div class="bg-surface-container-lowest p-md">
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">价格差</div>
+        {% if r.price_diff_pct is not none %}
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.price_diff_pct > 5 %}text-error{% elif r.price_diff_pct < -5 %}text-secondary{% else %}text-on-surface{% endif %}">{{ '%+.1f'|format(r.price_diff_pct) }}%</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">¥{{ '{:,.0f}'.format(r.own_price) }} vs ¥{{ '{:,.0f}'.format(r.comp_price) }}</div>
+        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
+      </div>
+      <!-- 容积差 -->
+      <div class="bg-surface-container-lowest p-md">
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">容积差</div>
+        {% if r.volume_diff_pct is not none %}
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ '%+.1f'|format(r.volume_diff_pct) }}%</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">{{ r.own_capacity_l }}L vs {{ r.comp_capacity_l }}L</div>
+        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
+      </div>
+      <!-- 周期差 -->
+      <div class="bg-surface-container-lowest p-md relative overflow-hidden">
+        {% if r.lead_advantage %}<div class="absolute top-0 right-0 w-12 h-12 bg-tertiary-fixed-dim/20 rounded-bl-full"></div>{% endif %}
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">周期差</div>
+        {% if r.lead_delta is not none %}
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.lead_advantage %}text-tertiary-fixed-dim{% else %}text-on-surface{% endif %}">{{ '%+d'|format(r.lead_delta) }} 天</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{{ r.own_lead_days }}天 vs {{ r.comp_lead_days }}天{% if r.lead_advantage %} · 现货优势{% endif %}</div>
+        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
+      </div>
+      <!-- 元/升 -->
+      <div class="bg-surface-container-lowest p-md">
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">元/升</div>
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ r.own_price_per_l or '—' }}</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">竞品 {{ r.comp_price_per_l or '—' }}</div>
+      </div>
+      <!-- 元/公斤 -->
+      <div class="bg-surface-container-lowest p-md">
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">元/公斤</div>
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ r.own_price_per_kg or '—' }}</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">竞品 {{ r.comp_price_per_kg or '—' }}</div>
+      </div>
+      <!-- 性价比指数 -->
+      <div class="bg-surface-container-lowest p-md">
+        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">性价比指数</div>
+        {% if r.vfm_index is not none %}
+        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.vfm_good %}text-secondary{% else %}text-on-surface{% endif %}">{{ r.vfm_index }}</div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{% if r.vfm_good %}我司单位成本更优{% else %}竞品单位成本更低{% endif %}</div>
+        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
+      </div>
+    </div>
+
+    {% if r.own_security_score or r.comp_security_score %}
+    <div class="px-lg py-sm border-t border-outline-variant/20 flex items-center gap-md">
+      <span class="font-label-sm text-label-sm text-on-surface-variant">防盗等级分：</span>
+      <span class="font-body-sm text-body-sm text-on-surface tabular-nums">集宝 {{ r.own_security_score or '—' }} ｜ 竞品 {{ r.comp_security_score or '—' }}</span>
+      {% if r.own_security_score and r.comp_security_score and r.own_security_score > r.comp_security_score %}
+      <span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">防护更强，支撑溢价论据</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}仪表盘{% endblock %}
+{% block content %}
+
+{% set sev_colors = {"Low":"bg-primary-container","Med":"bg-surface-tint","High":"bg-tertiary-fixed-dim","Crit":"bg-error"} %}
+{% set feed_border = {"Low":"border-outline","Med":"border-surface-tint","High":"border-error","Crit":"border-error"} %}
+{% set feed_dot = {"Low":"bg-outline","Med":"bg-surface-tint","High":"bg-error","Crit":"bg-error"} %}
+{% set type_chip = {
+  "price_change":"bg-surface-container-highest text-on-surface-variant",
+  "new_product":"bg-primary-container text-on-primary",
+  "discontinued":"bg-error-container text-on-error-container",
+  "promotion_change":"bg-secondary-container text-on-secondary-container",
+  "stock_change":"bg-tertiary-container/20 text-on-tertiary-container",
+  "spec_change":"bg-surface-container text-on-surface-variant"} %}
+
+<!-- KPI cards -->
+<section class="grid grid-cols-2 md:grid-cols-5 gap-md">
+  {% set kpi_cards = [
+    ("竞争对手", kpis.competitors_monitored, "analytics", false),
+    ("在监产品", kpis.products_tracked, "inventory_2", false),
+    ("今日变化", "+" ~ kpis.changes_today, "bolt", true),
+    ("进行中促销", kpis.active_promotions, "campaign", false),
+    ("新发现竞品", kpis.newly_discovered, "person_search", true)
+  ] %}
+  {% for label, value, icon, accent in kpi_cards %}
+  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32 relative overflow-hidden">
+    {% if accent %}<div class="absolute top-0 right-0 w-16 h-16 bg-tertiary-fixed-dim/10 rounded-bl-full -mr-4 -mt-4"></div>{% endif %}
+    <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">{{ label }}</span>
+    <div class="flex items-end justify-between mt-auto z-10">
+      <span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums {% if accent %}text-tertiary-fixed-dim{% endif %}">{{ value }}</span>
+      <span class="material-symbols-outlined {% if accent %}text-tertiary-fixed-dim{% else %}text-outline{% endif %}"{% if accent %} style="font-variation-settings:'FILL' 1;"{% endif %}>{{ icon }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- Market insights (对标/机会分析) -->
+{% if insights.total > 0 %}
+<section>
+  <div class="flex items-center gap-sm mb-md">
+    <span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings:'FILL' 1;">lightbulb</span>
+    <h2 class="font-headline-md text-headline-md text-on-surface">市场洞察（系统计算）</h2>
+    <a href="/benchmark" class="ml-auto text-secondary font-label-md text-label-md hover:underline">查看对标分析 →</a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+    {% set insight_cards = [
+      ("定价异常", insights.counts.pricing_anomaly, "price_change", "对标价差超 ±5%", "/benchmark"),
+      ("市场空档", insights.counts.market_gap, "grid_view", "竞品 <3 款的容量段", "/market-map"),
+      ("物流优势", insights.counts.logistics_advantage, "local_shipping", "现货交付快于竞品", "/benchmark")
+    ] %}
+    {% for label, count, icon, hint, href in insight_cards %}
+    <a href="{{ href }}" class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex items-center gap-md hover:border-secondary transition-colors">
+      <div class="w-12 h-12 rounded-lg {% if count > 0 %}bg-tertiary-fixed{% else %}bg-surface-container{% endif %} flex items-center justify-center">
+        <span class="material-symbols-outlined {% if count > 0 %}text-on-tertiary-fixed{% else %}text-outline{% endif %}">{{ icon }}</span>
+      </div>
+      <div>
+        <div class="flex items-baseline gap-sm">
+          <span class="font-display-lg text-display-lg font-semibold tabular-nums text-on-surface">{{ count }}</span>
+          <span class="font-body-lg text-on-surface">{{ label }}</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">{{ hint }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Charts -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <div class="flex justify-between items-center mb-md">
+      <h2 class="font-headline-md text-headline-md text-on-surface">变化检测趋势（近14天）</h2>
+      <a href="/reports" class="text-secondary font-label-md text-label-md hover:underline">查看报告</a>
+    </div>
+    <div class="flex-1 min-h-[280px]"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">价格稳定性指数（近30天）</h2>
+    <div class="flex-1 flex flex-col justify-center gap-md">
+      {% set sev_labels = severity['labels'] %}
+      {% set sev_values = severity['values'] %}
+      {% set max_sev = sev_values|max %}
+      {% for i in range(sev_labels|length) %}
+      <div class="flex items-center gap-sm w-full">
+        <span class="font-label-sm text-label-sm text-on-surface-variant w-8">{{ sev_labels[i] }}</span>
+        <div class="flex-1 bg-surface-container-low h-6 rounded-sm overflow-hidden">
+          <div class="h-full {{ sev_colors[sev_labels[i]] }}" style="width: {{ (sev_values[i] / max_sev * 100) if max_sev else 0 }}%"></div>
+        </div>
+        <span class="font-label-sm text-label-sm text-on-surface-variant w-6 text-right tabular-nums">{{ sev_values[i] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Recent feed -->
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+  <h2 class="font-headline-md text-headline-md text-on-surface mb-lg pb-sm border-b border-outline-variant/30">最新情报动态</h2>
+  {% if feed %}
+  <div class="relative pl-6 border-l-2 border-[#D6D9DD] space-y-xl pb-md ml-2">
+    {% for item in feed %}
+    <div class="relative">
+      <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 {{ feed_border[item.severity] }} flex items-center justify-center">
+        <div class="w-2 h-2 rounded-full {{ feed_dot[item.severity] }}"></div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-md items-start">
+        <div class="w-12 h-12 rounded bg-primary-container flex-shrink-0 flex items-center justify-center text-on-primary text-label-md">
+          {{ item.company[:1] if item.company else "?" }}
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-sm mb-xs flex-wrap">
+            <span class="font-label-sm text-label-sm px-2 py-0.5 rounded {{ type_chip.get(item.event_type, 'bg-surface-container text-on-surface-variant') }}">{{ item.type_label }}</span>
+            <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">严重度：{{ item.severity }}</span>
+            <span class="font-body-sm text-body-sm text-on-surface-variant ml-auto">{{ item.time_ago }}</span>
+          </div>
+          <h3 class="font-body-lg text-body-lg font-medium text-on-surface">{{ item.company }} · {{ item.title }}</h3>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">{{ item.summary }}</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-on-surface-variant text-body-md py-lg text-center">暂无检测到的变化。运行一次抓取后即可看到情报动态。</p>
+  {% endif %}
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script id="trend-data" type="application/json">{{ trend|tojson }}</script>
+<script>window.__trend = JSON.parse(document.getElementById('trend-data').textContent);</script>
+{% endblock %}

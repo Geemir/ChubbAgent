@@ -1,0 +1,32 @@
+services:
+  # Scheduler: runs the daily + weekly pipelines on cron.
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: chubb-agent:0.1.0
+    env_file:
+      - .env
+    environment:
+      CHUBB_TIMEZONE: Asia/Shanghai
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped
+    # Default command (scheduler) comes from the image CMD.
+
+  # Dashboard: FastAPI + Jinja2 web app on :8000.
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: chubb-agent:0.1.0
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    command: ["uv", "run", "uvicorn", "chubb_ci.web.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

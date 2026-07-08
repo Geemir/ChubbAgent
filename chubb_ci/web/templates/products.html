@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}产品情报{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">产品情报</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">监控竞争对手定价、品类与近期市场变动。</p>
+  </div>
+  <a href="/api/export/products.csv" class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors self-start">
+    <span class="material-symbols-outlined" style="font-size:18px;">download</span>导出 CSV
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] grid grid-cols-1 md:grid-cols-3 gap-md">
+  <div class="md:col-span-1">
+    <label class="font-label-md text-label-md text-on-surface-variant">搜索</label>
+    <div class="relative mt-xs">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size:18px;">search</span>
+      <input id="filter-name" class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-secondary-fixed-dim" placeholder="按产品名称筛选…" type="text"/>
+    </div>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">品类</label>
+    <select id="filter-category" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部品类</option>
+      {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">竞争对手</label>
+    <select id="filter-company" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部竞争对手</option>
+      {% for c in companies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+
+<!-- Table (click column headers to sort) -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md" id="products-table">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider select-none">
+          <th class="text-left px-md py-md sortable cursor-pointer hover:text-primary" data-key="name" data-type="str">产品名称 <span class="sort-ind"></span></th>
+          <th class="text-left px-md py-md sortable cursor-pointer hover:text-primary" data-key="company" data-type="str">竞争对手 <span class="sort-ind"></span></th>
+          <th class="text-left px-md py-md">品类</th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="price" data-type="num">现价 <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="diff" data-type="num">变化 <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="cap" data-type="num">容积L <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="fire" data-type="num">防火h <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="sec" data-type="num">防盗分 <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="ppl" data-type="num">元/升 <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="ppk" data-type="num">元/公斤 <span class="sort-ind"></span></th>
+          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="lead" data-type="num">交期天 <span class="sort-ind"></span></th>
+          <th class="text-left px-md py-md">促销</th>
+          <th class="text-left px-md py-md">更新</th>
+        </tr>
+      </thead>
+      <tbody id="products-tbody">
+        {% for r in rows %}
+        <tr class="product-row border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors"
+            data-name="{{ r.product_name|lower }}" data-category="{{ r.category }}" data-company="{{ r.company }}"
+            data-price="{{ r.price if r.price is not none else '' }}" data-diff="{{ r.diff_pct if r.diff_pct is not none else '' }}"
+            data-cap="{{ r.capacity_l if r.capacity_l is not none else '' }}" data-fire="{{ r.fire_hours if r.fire_hours is not none else '' }}"
+            data-sec="{{ r.security_score if r.security_score is not none else '' }}" data-ppl="{{ r.price_per_l if r.price_per_l is not none else '' }}"
+            data-ppk="{{ r.price_per_kg if r.price_per_kg is not none else '' }}" data-lead="{{ r.lead_time_days if r.lead_time_days is not none else '' }}">
+          <td class="px-md py-md text-on-surface font-medium">
+            {{ r.product_name }}
+            {% if r.status_label %}<span class="ml-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">{{ r.status_label }}</span>{% endif %}
+          </td>
+          <td class="px-md py-md text-on-surface-variant">{{ r.company }}</td>
+          <td class="px-md py-md"><span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.category }}</span></td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface font-medium" {% if r.prev_price is not none %}title="原价 ¥{{ '{:,.0f}'.format(r.prev_price) }}"{% endif %}>{% if r.price is not none %}¥{{ '{:,.0f}'.format(r.price) }}{% else %}—{% endif %}</td>
+          <td class="px-md py-md text-right">
+            {% if r.diff_pct is not none and r.diff_pct != 0 %}
+            <span class="inline-flex items-center gap-1 font-label-md tabular-nums {% if r.diff_pct < 0 %}text-error{% else %}text-secondary{% endif %}">
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ 'south' if r.diff_pct < 0 else 'north' }}</span>{{ '%.1f'|format(r.diff_pct|abs) }}%
+            </span>
+            {% else %}<span class="text-on-surface-variant">–</span>{% endif %}
+          </td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.capacity_l if r.capacity_l is not none else "—" }}</td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.fire_hours if r.fire_hours is not none else "—" }}</td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.security_score if r.security_score is not none else "—" }}</td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.price_per_l if r.price_per_l is not none else "—" }}</td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.price_per_kg if r.price_per_kg is not none else "—" }}</td>
+          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.lead_time_days if r.lead_time_days is not none else "—" }}</td>
+          <td class="px-md py-md">
+            {% if r.promotion %}
+            <span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm">{{ r.promotion }}</span>
+            {% else %}<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">无</span>{% endif %}
+          </td>
+          <td class="px-md py-md text-on-surface-variant font-body-sm text-body-sm whitespace-nowrap">{{ r.last_updated }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex items-center justify-between px-lg py-md">
+    <span id="results-count" class="font-body-sm text-body-sm text-on-surface-variant">共 {{ rows|length }} 条结果</span>
+  </div>
+  {% if not rows %}
+  <p class="px-lg pb-lg text-on-surface-variant text-body-md">暂无产品数据。运行 <code>chubb-ci crawl</code> 或 <code>chubb-ci seed-demo</code>。</p>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  window.__initProductFilter && window.__initProductFilter();
+  window.__initProductSort && window.__initProductSort();
+</script>
+{% endblock %}

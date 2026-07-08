@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ChubbAgent - Daily Reports</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#001d32",
+                      "surface-container-highest": "#e1e3e4",
+                      "surface-variant": "#e1e3e4",
+                      "tertiary-fixed-dim": "#f0c03e",
+                      "on-tertiary-fixed-variant": "#594400",
+                      "primary-fixed": "#d3e4ff",
+                      "surface-tint": "#3e608b",
+                      "surface-container": "#edeeef",
+                      "inverse-on-surface": "#f0f1f2",
+                      "tertiary": "#2e2100",
+                      "outline-variant": "#c3c6d0",
+                      "secondary-fixed": "#cde5ff",
+                      "on-primary": "#ffffff",
+                      "secondary": "#30628a",
+                      "error": "#ba1a1a",
+                      "surface": "#f8f9fa",
+                      "on-primary-fixed-variant": "#244872",
+                      "inverse-primary": "#a6c9fa",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#483600",
+                      "background": "#f8f9fa",
+                      "tertiary-fixed": "#ffdf95",
+                      "on-background": "#191c1d",
+                      "surface-container-high": "#e7e8e9",
+                      "secondary-fixed-dim": "#9ccbf8",
+                      "on-secondary-fixed-variant": "#104a71",
+                      "on-surface": "#191c1d",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface-variant": "#43474e",
+                      "on-primary-container": "#83a5d4",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#a6c9fa",
+                      "on-tertiary-fixed": "#251a00",
+                      "inverse-surface": "#2e3132",
+                      "secondary-container": "#a1d1fe",
+                      "primary-container": "#123a63",
+                      "on-error": "#ffffff",
+                      "surface-dim": "#d9dadb",
+                      "surface-container-low": "#f3f4f5",
+                      "surface-bright": "#f8f9fa",
+                      "on-tertiary-container": "#c89c15",
+                      "on-secondary": "#ffffff",
+                      "outline": "#73777f",
+                      "primary": "#002446",
+                      "on-primary-fixed": "#001c38",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#265a81"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "xl": "32px",
+                      "xs": "4px",
+                      "gutter": "20px",
+                      "md": "16px",
+                      "margin-page": "40px",
+                      "sm": "8px",
+                      "lg": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "display-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-sm": [
+                              "IBM Plex Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex fixed left-0 top-0 h-full w-64 bg-primary flex-col py-md shadow-sm z-50">
+<div class="px-lg pb-xl border-b border-outline-variant/20 mb-sm flex items-center space-x-sm">
+<span class="material-symbols-outlined text-primary-fixed" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary">ChubbAgent</h1>
+<p class="font-label-sm text-label-sm text-primary-fixed-dim/70">Enterprise Safe Monitoring</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar">
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center bg-secondary-container text-on-secondary-container rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-md text-label-md">Daily Reports</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">analytics</span>
+<span class="font-label-md text-label-md">Competitors</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">inventory_2</span>
+<span class="font-label-md text-label-md">Products</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">campaign</span>
+<span class="font-label-md text-label-md">Promotions</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">payments</span>
+<span class="font-label-md text-label-md">Price Changes</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">trending_up</span>
+<span class="font-label-md text-label-md">Market Trends</span>
+</a>
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">smart_toy</span>
+<span class="font-label-md text-label-md">Research Agent</span>
+</a>
+</div>
+<div class="mt-auto border-t border-outline-variant/20 pt-sm">
+<a class="flex items-center text-on-primary/70 hover:text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 rounded-lg mx-2 my-1 px-sm py-sm scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mr-sm">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="hidden md:flex justify-between items-center w-full px-lg py-sm bg-surface sticky top-0 z-40 shadow-sm border-b border-outline-variant">
+<div class="flex items-center flex-1">
+<!-- Search Bar -->
+<div class="relative w-96 mr-lg">
+<span class="material-symbols-outlined absolute left-sm top-1/2 transform -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-xl pr-sm py-xs bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all" placeholder="Search reports..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-md">
+<button class="p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<button class="p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors cursor-pointer active:opacity-80 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-container overflow-hidden border border-outline-variant ml-sm cursor-pointer active:opacity-80 hover:bg-surface-container-high transition-colors">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small, professional headshot of an enterprise security operative wearing a dark navy blazer against a crisp white background. Bright, clinical lighting highlighting a trustworthy demeanor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwHBYJ3vuVlY7432o89vfOZ2vz_1yeEm3XRfDqaYmn_Z7YerpxjVR4nnlZ6yvGgckZd-rNynuBjiVAcDy7jjqrHybx11jsuve8qCstTNYaM3nTCLFnIjYBSn5Sh-jzpDITxfKX5MbjXmt6aaiE5ZBcM-ah4PyoT664CH78KC7zymizV5xL38PMnSLIXzb0KmLm46nBTbldPmmn3KtXN1YeMTQc9WWkKueoGUYZ2OO1u4idBUH7gl615cp3Qm36P8UoCKbtASfBWn4"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-md md:p-margin-page bg-background">
+<!-- Page Header -->
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-xs">Daily Report: Oct 24, 2023</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-tertiary-fixed-dim mr-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    Crawl complete. 12 price changes and 2 new products detected across 24 competitors.
+                </p>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter">
+<!-- AI Summary (Bento Left) -->
+<div class="xl:col-span-8 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 p-lg flex flex-col relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+<div class="flex items-center justify-between mb-md relative z-10">
+<div class="flex items-center space-x-sm">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Executive Summary</h3>
+</div>
+<span class="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-2 py-1 rounded-full uppercase tracking-wider">AI Generated</span>
+</div>
+<div class="prose prose-sm max-w-none text-on-surface-variant font-body-md leading-relaxed relative z-10 flex-1">
+<p class="mb-sm">Over the last 24 hours, market activity has been moderate with a focus on mid-tier physical security solutions. The most notable movement comes from <strong>SecurMax</strong>, which aggressively dropped prices across their flagship biometric safe line by an average of 8%.</p>
+<p class="mb-sm">We also observed a strategic shift by <strong>IronHold Corp</strong>, introducing two new modular lockboxes targeting the small-medium enterprise segment. This aligns with predicted Q4 market trends emphasizing scalable security.</p>
+<p><strong>Recommendation:</strong> Review pricing strategy for ChubbAgent Series 400 to maintain competitive edge against SecurMax's recent reductions. Initiate preliminary analysis on IronHold's new modular features.</p>
+</div>
+<div class="mt-md pt-sm border-t border-outline-variant/30 flex justify-end space-x-sm relative z-10">
+<button class="px-md py-sm bg-surface-container-lowest border border-surface-tint text-primary font-label-md text-label-md rounded-lg hover:bg-surface-container-low transition-colors">Export PDF</button>
+<button class="px-md py-sm bg-primary text-on-primary font-label-md text-label-md rounded-lg hover:bg-primary-fixed-variant transition-colors shadow-sm">View Full Analysis</button>
+</div>
+</div>
+<!-- Competitor Highlights (Bento Right) -->
+<div class="xl:col-span-4 flex flex-col gap-gutter">
+<!-- Status Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 p-md flex items-center justify-between">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide mb-xs">Active Crawlers</p>
+<p class="font-headline-md text-headline-md text-on-surface">24/24</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container">sliders</span>
+</div>
+</div>
+<!-- Status Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-error/20 p-md flex flex-col justify-between relative overflow-hidden flex-1">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-center justify-between mb-sm">
+<p class="font-label-sm text-label-sm text-error uppercase tracking-wide">Critical Alerts</p>
+<span class="material-symbols-outlined text-error text-[20px]">warning</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-medium">SecurMax Series 9 Stock Out</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Major competitor out of stock on primary rival product across 3 major distributors.</p>
+</div>
+<button class="mt-sm text-left font-label-sm text-label-sm text-primary hover:underline flex items-center">
+                            Investigate Opportunity <span class="material-symbols-outlined text-[14px] ml-xs">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- New Products Horizontal Scroll -->
+<div class="xl:col-span-12">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">New Products Detected (2)</h3>
+</div>
+<div class="flex overflow-x-auto gap-gutter pb-sm no-scrollbar snap-x">
+<!-- Product Card 1 -->
+<div class="min-w-[320px] max-w-[350px] bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 flex flex-col snap-start overflow-hidden group hover:shadow-md transition-shadow">
+<div class="h-40 bg-surface-container-low relative overflow-hidden">
+<img alt="IronHold ModVault" class="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500" data-alt="A sleek, modern, modular steel lockbox meant for enterprise use. It is painted matte black with subtle brushed steel accents. The setting is a clean, sterile studio environment with soft, diffused white lighting highlighting its robust construction." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvoei0jdgo3CseLQvOtMEMGdO03sHTo2lY0y53MMIGBOsoGRu4rAFHEfjTusPM50MfPhIQu19McyJSgAitWmtU6LlhTr9KIVxYlqCBxukIZoeTObx2c4jQeMtD8NN7dE1_H_Gv2U0G8nbl6dslqePPfeeFUrXEV5WL5eFEqBJ6VbagU6C2HmokZ33k9vPsuK41wP3dnAd__-4tVHiYFKleWWuHdNM1hc1t0v66LYV_l3gJjEUscxkIziLafSeSEI26igc-mPmkdCk"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest text-primary font-label-sm text-label-sm px-2 py-1 rounded shadow-sm">IronHold Corp</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<h4 class="font-headline-md text-headline-md text-on-surface text-[16px] mb-xs">ModVault 200 Series</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md flex-1">New modular lockbox system targeting SME offices. Features advanced biometric override and network integration capabilities.</p>
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">$499.00 MSRP</span>
+<button class="text-primary hover:bg-surface-container p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="min-w-[320px] max-w-[350px] bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 flex flex-col snap-start overflow-hidden group hover:shadow-md transition-shadow">
+<div class="h-40 bg-surface-container-low relative overflow-hidden">
+<img alt="DefendTech SmartPad" class="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500" data-alt="A close-up of a high-tech smart safe keypad. The keypad features glass touch buttons with subtle blue LED backlighting. The surrounding safe body is heavy gauge steel in a deep navy color. The lighting is dramatic, highlighting the high-tech nature of the security device." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEo-kY8E9maRHr5_4hQymViNP1hOfwpoddIjgqHCO9l5pjtuDLG4AXi9_LNVnMc27ynv_MwrycZ2CgfWCQpyDfYTGM_5vup0QdsLCQls4Y3dV-NBWjAkArep2vqPd0fQ5mjNa9hSjpE_8PHr5drg6IgYwtRqFlzfRdhMQUAg4z19-jYBdESOLdFlyuzA0kF1tL44iOckzsbP7Qt9XldLPH5kMjFa-EqMmTe1mXUCMPJA-pttD63aeup3l0H4ja4mYMBB33yNpBu68"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest text-primary font-label-sm text-label-sm px-2 py-1 rounded shadow-sm">DefendTech</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<h4 class="font-headline-md text-headline-md text-on-surface text-[16px] mb-xs">Aura SmartKey Upgrade Kit</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md flex-1">Retrofit smart lock mechanism designed to fit older mechanical safe models. Cloud-connected auditing features included.</p>
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">$249.00 MSRP</span>
+<button class="text-primary hover:bg-surface-container p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Price Changes Table -->
+<div class="xl:col-span-8 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md text-on-surface text-[16px]">Significant Price Movements (12)</h3>
+<button class="text-primary font-label-sm text-label-sm flex items-center hover:underline">
+                            View All <span class="material-symbols-outlined text-[16px] ml-xs">arrow_forward</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant font-label-md text-label-md">
+<th class="p-sm pl-md font-bold">Competitor</th>
+<th class="p-sm font-bold">Product</th>
+<th class="p-sm font-bold text-right">Old Price</th>
+<th class="p-sm font-bold text-right">New Price</th>
+<th class="p-sm font-bold text-right">Change</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/20">
+<tr class="hover:bg-secondary-fixed/30 transition-colors">
+<td class="p-sm pl-md font-medium">SecurMax</td>
+<td class="p-sm">BioVault Pro 100</td>
+<td class="p-sm text-right tabular-nums">$1,200</td>
+<td class="p-sm text-right tabular-nums font-medium">$1,104</td>
+<td class="p-sm text-right">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-error bg-error-container/50 font-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-0.5">arrow_downward</span> 8.0%
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-secondary-fixed/30 transition-colors">
+<td class="p-sm pl-md font-medium">SecurMax</td>
+<td class="p-sm">BioVault Pro 200</td>
+<td class="p-sm text-right tabular-nums">$1,500</td>
+<td class="p-sm text-right tabular-nums font-medium">$1,380</td>
+<td class="p-sm text-right">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-error bg-error-container/50 font-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-0.5">arrow_downward</span> 8.0%
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-secondary-fixed/30 transition-colors">
+<td class="p-sm pl-md font-medium">FortressBox</td>
+<td class="p-sm">Standard Deposit Safe</td>
+<td class="p-sm text-right tabular-nums">$450</td>
+<td class="p-sm text-right tabular-nums font-medium">$465</td>
+<td class="p-sm text-right">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-primary bg-primary-fixed font-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-0.5">arrow_upward</span> 3.3%
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-secondary-fixed/30 transition-colors">
+<td class="p-sm pl-md font-medium">SafeGuard</td>
+<td class="p-sm">Fireproof Document Safe M</td>
+<td class="p-sm text-right tabular-nums">$320</td>
+<td class="p-sm text-right tabular-nums font-medium">$299</td>
+<td class="p-sm text-right">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-error bg-error-container/50 font-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-0.5">arrow_downward</span> 6.5%
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-secondary-fixed/30 transition-colors">
+<td class="p-sm pl-md font-medium text-on-surface-variant" colspan="5">
+<div class="flex items-center justify-center py-xs">
+<span class="text-label-sm">8 more rows hidden</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Promotions Column -->
+<div class="xl:col-span-4 flex flex-col gap-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface text-[16px] mb-xs">Active Promotions</h3>
+<!-- Promo Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm relative overflow-hidden group">
+<div class="absolute right-0 top-0 w-16 h-16 bg-tertiary-fixed-dim/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start mb-sm relative z-10">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Black Friday Early Access</span>
+<h4 class="font-headline-md text-headline-md text-on-surface text-[16px] mt-xs">20% Off All Digital Safes</h4>
+</div>
+<div class="bg-surface-container rounded p-1">
+<span class="material-symbols-outlined text-primary text-[20px]">campaign</span>
+</div>
+</div>
+<div class="flex items-center text-body-sm text-on-surface-variant mb-md relative z-10">
+<span class="material-symbols-outlined text-[16px] mr-xs">schedule</span> Ends Oct 31
+                            <span class="mx-sm border-l border-outline-variant h-3"></span>
+<span class="font-medium">SecurMax</span>
+</div>
+<a class="text-primary font-label-sm text-label-sm flex items-center hover:underline relative z-10 w-fit" href="#">
+                            View Source Listing <span class="material-symbols-outlined text-[14px] ml-xs">open_in_new</span>
+</a>
+</div>
+<!-- Promo Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm relative overflow-hidden group">
+<div class="flex justify-between items-start mb-sm relative z-10">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">B2B Volume Discount</span>
+<h4 class="font-headline-md text-headline-md text-on-surface text-[16px] mt-xs">Buy 5, Get 1 Free (Lockboxes)</h4>
+</div>
+<div class="bg-surface-container rounded p-1">
+<span class="material-symbols-outlined text-primary text-[20px]">sell</span>
+</div>
+</div>
+<div class="flex items-center text-body-sm text-on-surface-variant mb-md relative z-10">
+<span class="material-symbols-outlined text-[16px] mr-xs">schedule</span> Ongoing
+                            <span class="mx-sm border-l border-outline-variant h-3"></span>
+<span class="font-medium">IronHold Corp</span>
+</div>
+<a class="text-primary font-label-sm text-label-sm flex items-center hover:underline relative z-10 w-fit" href="#">
+                            View Source Listing <span class="material-symbols-outlined text-[14px] ml-xs">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

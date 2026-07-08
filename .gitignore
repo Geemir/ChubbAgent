@@ -1,0 +1,27 @@
+# Secrets & env
+.env
+
+# Runtime data (crawled HTML, SQLite db, generated reports)
+data/
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Playwright
+playwright-report/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

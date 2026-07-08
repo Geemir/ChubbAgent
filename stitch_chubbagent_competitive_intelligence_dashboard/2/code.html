@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-background dark:bg-background" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ChubbAgent - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#001d32",
+                      "surface-container-highest": "#e1e3e4",
+                      "surface-variant": "#e1e3e4",
+                      "tertiary-fixed-dim": "#f0c03e",
+                      "on-tertiary-fixed-variant": "#594400",
+                      "primary-fixed": "#d3e4ff",
+                      "surface-tint": "#3e608b",
+                      "surface-container": "#edeeef",
+                      "inverse-on-surface": "#f0f1f2",
+                      "tertiary": "#2e2100",
+                      "outline-variant": "#c3c6d0",
+                      "secondary-fixed": "#cde5ff",
+                      "on-primary": "#ffffff",
+                      "secondary": "#30628a",
+                      "error": "#ba1a1a",
+                      "surface": "#f8f9fa",
+                      "on-primary-fixed-variant": "#244872",
+                      "inverse-primary": "#a6c9fa",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#483600",
+                      "background": "#f8f9fa",
+                      "tertiary-fixed": "#ffdf95",
+                      "on-background": "#191c1d",
+                      "surface-container-high": "#e7e8e9",
+                      "secondary-fixed-dim": "#9ccbf8",
+                      "on-secondary-fixed-variant": "#104a71",
+                      "on-surface": "#191c1d",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface-variant": "#43474e",
+                      "on-primary-container": "#83a5d4",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#a6c9fa",
+                      "on-tertiary-fixed": "#251a00",
+                      "inverse-surface": "#2e3132",
+                      "secondary-container": "#a1d1fe",
+                      "primary-container": "#123a63",
+                      "on-error": "#ffffff",
+                      "surface-dim": "#d9dadb",
+                      "surface-container-low": "#f3f4f5",
+                      "surface-bright": "#f8f9fa",
+                      "on-tertiary-container": "#c89c15",
+                      "on-secondary": "#ffffff",
+                      "outline": "#73777f",
+                      "primary": "#002446",
+                      "on-primary-fixed": "#001c38",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#265a81"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "xl": "32px",
+                      "xs": "4px",
+                      "gutter": "20px",
+                      "md": "16px",
+                      "margin-page": "40px",
+                      "sm": "8px",
+                      "lg": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "display-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-sm": [
+                              "IBM Plex Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Hide scrollbar for clean aesthetic */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full font-body-md flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-md fixed left-0 top-0 h-full w-64 bg-primary dark:bg-on-primary-fixed shadow-sm z-50">
+<div class="px-lg pb-xl flex flex-col items-center border-b border-surface-variant/20 mb-md">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest mb-sm overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A clean, modern corporate logo icon for ChubbAgent, representing enterprise safe monitoring. High-key light mode aesthetic with deep blacks and pristine whites. Minimalist and secure." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsubs7IWQ-UQW19iHi8qGF1OQfGqor5-bEU_JGnlxmrZpGA0uve253YMKbD3oUwcanYByaVrr1lPd79Xnv3D4WD2gJrN0SHgU5KzYGHk-1M0qPbjiyRQhbosTv6ZRIJVV-8BXgzYrr77SEUed5mdrDdRvoE2yNVx_9B7SJl_yeTjXPvsEYyzGPLv9H7PN8o9-SDrFmIy-UEnul9w_qjsgFu6BCga7gAR-P1CBnvkiYZ3yeqjbFJ8eeNXx1ReuPjzeaFlqIPJIxB_w"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary dark:text-primary-fixed">ChubbAgent</h1>
+<p class="font-label-sm text-label-sm text-on-primary/70 dark:text-primary-fixed-dim/70 mt-xs">Enterprise Safe Monitoring</p>
+</div>
+<div class="flex-1 overflow-y-auto px-xs">
+<ul class="space-y-xs">
+<li>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-md text-label-md">Daily Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Competitors</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Products</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Promotions</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Price Changes</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-md text-label-md">Market Trends</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-label-md text-label-md">Research Agent</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 dark:text-primary-fixed-dim/70 hover:text-on-primary mx-2 my-1 scale-98 active:scale-95 transition-transform hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 md:ml-64 flex flex-col h-full relative overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-lg py-sm docked full-width top-0 sticky z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary hidden md:block">ChubbAgent</span>
+</div>
+<div class="flex items-center gap-md flex-1 max-w-md ml-lg">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-secondary-fixed-dim transition-all" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-sm ml-auto">
+<button class="p-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 rounded-full">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<button class="p-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 rounded-full relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden ml-sm border border-outline-variant cursor-pointer">
+<img class="w-full h-full object-cover" data-alt="A small, professional user avatar portrait for a corporate dashboard. High-key lighting, neutral background, minimal corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8ueG728mrGsHHN6exBKTNYTCG7uNat6-6DlQHRPhZaiH9adxNv7SndkGqvN4o7_bXNLpXGSDgWqH94IaTGouEI1g1XOSdLbFN2SO4MSBX8EjLHTKPV_s6_jWaB0Ulnku1W_kPg0pSM_OL0RgGe-c76NAw66gH1gcC89dA7VExv3-sH9P3H_xFR_gZSk4384nzAk0CfmNjVqHvQByxkPEvgzIhh0-HpwV4zM5wnUKryq3bi70oYJw86DAqHYgNUzYhgbrznbFDqYU"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-4 md:p-margin-page">
+<div class="max-w-[1600px] mx-auto space-y-lg">
+<!-- KPI Section -->
+<section class="grid grid-cols-2 md:grid-cols-5 gap-md">
+<!-- KPI Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32 relative overflow-hidden">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Competitors Monitored</span>
+<div class="flex items-end justify-between mt-auto">
+<span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums">24</span>
+<span class="material-symbols-outlined text-outline">analytics</span>
+</div>
+</div>
+<!-- KPI Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Products Tracked</span>
+<div class="flex items-end justify-between mt-auto">
+<span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums">1,240</span>
+<span class="material-symbols-outlined text-outline">inventory_2</span>
+</div>
+</div>
+<!-- KPI Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32 relative">
+<div class="absolute top-0 right-0 w-16 h-16 bg-tertiary-fixed-dim/10 rounded-bl-full -mr-4 -mt-4"></div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Changes Detected Today</span>
+<div class="flex items-end justify-between mt-auto z-10">
+<span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums">+12</span>
+<span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+</div>
+<!-- KPI Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Active Promotions</span>
+<div class="flex items-end justify-between mt-auto">
+<span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums">8</span>
+<span class="material-symbols-outlined text-outline">campaign</span>
+</div>
+</div>
+<!-- KPI Card 5 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-32">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Newly Discovered Competitors</span>
+<div class="flex items-end justify-between mt-auto">
+<span class="font-display-lg text-display-lg text-on-surface font-semibold tabular-nums text-tertiary-fixed-dim">2</span>
+<span class="material-symbols-outlined text-tertiary-fixed-dim">person_search</span>
+</div>
+</div>
+</section>
+<!-- Middle Section: Charts -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter h-[400px]">
+<!-- Trend Chart -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Detected Changes Trend</h2>
+<button class="text-secondary font-label-md text-label-md hover:underline">View Full Report</button>
+</div>
+<div class="flex-1 bg-surface-container-low/50 rounded border border-outline-variant/20 flex items-center justify-center relative overflow-hidden">
+<!-- Placeholder for Line Chart. Using a very simple CSS representation for layout purposes as instructed to prioritize high-end patterns over generic data vis unless needed -->
+<div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-secondary-fixed/20 to-transparent"></div>
+<div class="w-full px-lg h-full flex items-end justify-between py-md">
+<!-- Mock Data Points -->
+<div class="w-2 h-[20%] bg-surface-tint rounded-t-sm relative"><div class="absolute -top-3 -left-1 w-4 h-4 bg-tertiary-fixed-dim rounded-full border-2 border-surface-container-lowest opacity-0 group-hover:opacity-100"></div></div>
+<div class="w-2 h-[45%] bg-surface-tint rounded-t-sm"></div>
+<div class="w-2 h-[30%] bg-surface-tint rounded-t-sm"></div>
+<div class="w-2 h-[60%] bg-surface-tint rounded-t-sm"></div>
+<div class="w-2 h-[50%] bg-surface-tint rounded-t-sm relative"><div class="absolute -top-3 -left-1 w-4 h-4 bg-tertiary-fixed-dim rounded-full border-2 border-surface-container-lowest z-10"></div></div>
+<div class="w-2 h-[80%] bg-surface-tint rounded-t-sm"></div>
+<div class="w-2 h-[75%] bg-surface-tint rounded-t-sm"></div>
+</div>
+<div class="absolute bottom-8 left-0 w-full border-b border-dashed border-outline-variant/40"></div>
+<div class="absolute bottom-1/2 left-0 w-full border-b border-dashed border-outline-variant/40"></div>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+<span class="font-display-lg text-display-lg text-outline">Line Chart Visualization Area</span>
+</div>
+</div>
+</div>
+<!-- Bar Chart -->
+<div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-md">Price Stability Index</h2>
+<div class="flex-1 flex flex-col justify-end gap-sm">
+<!-- Mock Bars -->
+<div class="flex items-center gap-sm w-full">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8">Low</span>
+<div class="flex-1 bg-surface-container-low h-6 rounded-sm overflow-hidden">
+<div class="h-full bg-primary-container w-[80%]"></div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8">Med</span>
+<div class="flex-1 bg-surface-container-low h-6 rounded-sm overflow-hidden">
+<div class="h-full bg-surface-tint w-[45%]"></div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8">High</span>
+<div class="flex-1 bg-surface-container-low h-6 rounded-sm overflow-hidden">
+<div class="h-full bg-tertiary-fixed-dim w-[15%]"></div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8">Crit</span>
+<div class="flex-1 bg-surface-container-low h-6 rounded-sm overflow-hidden">
+<div class="h-full bg-error w-[5%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Section: Timeline Feed -->
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-lg pb-sm border-b border-outline-variant/30">Recent Intelligence Feed</h2>
+<div class="relative pl-6 border-l-2 border-[#D6D9DD] space-y-xl pb-md ml-2">
+<!-- Timeline Item 1 -->
+<div class="relative">
+<!-- Milestone Dot -->
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-outline flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-outline"></div>
+</div>
+<div class="flex flex-col sm:flex-row gap-md items-start">
+<div class="w-12 h-12 rounded bg-surface-container flex-shrink-0 overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-contain p-1" data-alt="A clean, minimalist logo for 'Securitas', a safe manufacturer. Professional, corporate, flat design style. High contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6tDplh826M27m_WkNfelCWY0pAfOKFknAs-NQMkLLCjMlYe3aScknVv8hb8-4TC-63L9r4nX5Pe5fLNqdRigp7bUwsR1n9TNAXvKnduue3Z1oWoVevTeAMWbFEUkwIk5qeXpoy7rg_L_3bUFAP6KFsWwb24R1sXJBKb2ZT73Tab_Qt9RARMriuhwU7-C2mX_GT2M-xfL9RwqlLOTW2GQGbfqlx5ktHKDVJGIVfsux7edSmtQIB--LYzmxSQOe-ucXjjiKTOPQFq0"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant border border-outline-variant/50">Price Update</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">Severity: Low</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-auto">10 mins ago</span>
+</div>
+<h3 class="font-body-lg text-body-lg font-medium text-on-surface">'Securitas Safe X1' dropped 5%</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">AI Summary: Detected a 5% price reduction across major European distributors for the Securitas Safe X1 model. Likely an inventory clearing move prior to Q3.</p>
+</div>
+</div>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative">
+<!-- Milestone Dot (Critical - Swedish Yellow) -->
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-tertiary-fixed-dim flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></div>
+</div>
+<div class="flex flex-col sm:flex-row gap-md items-start">
+<div class="w-12 h-12 rounded bg-surface-container flex-shrink-0 overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-contain p-1" data-alt="A clean, minimalist logo for 'MasterLock', a security hardware company. Professional, bold, flat design style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB75SqyxxLR32ZY10YGHBiAVAhJaFk4s8DA6VmjdjChgWEWrp3sguu_bmAaUc4N_2arlYkpMjbBNE4vzFafbE_S_bFbdfopVPgodUL_aCzUrzhokTxIgn6Hc4ZFB2pBHjnQAVcDuGImSlOV1hsTeSWzidKNIgVhxRFkHLiqzdbMsXqzKPU1UNYFloVK64E3uiS5-Q-ALhaGp5c6xARwhkG0yeLMyJ3Qiwf284aKFgFCHoc6MdvzwyxvQZxh9r_K-2i4SRX8F0gJ858"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-primary-container text-on-primary border border-primary-container">Product Launch</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-error-container text-on-error-container">Severity: High</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-auto">2 hours ago</span>
+</div>
+<h3 class="font-body-lg text-body-lg font-medium text-on-surface">'MasterLock Pro Series'</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">AI Summary: MasterLock has officially launched the new Pro Series enterprise safes. Initial specs indicate direct competition with our Tier 2 offerings. Monitoring initial market reception.</p>
+</div>
+</div>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative">
+<!-- Milestone Dot -->
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-surface-tint flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-surface-tint"></div>
+</div>
+<div class="flex flex-col sm:flex-row gap-md items-start">
+<div class="w-12 h-12 rounded bg-surface-container flex-shrink-0 overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-contain p-1" data-alt="A clean, minimalist logo for 'SafeGuard', a safe retailer. Professional, geometric, flat design style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcpmf6ZbXDH_29AKc4myF8fsvDddcYmNB9S87tfdQZ6QwQD5V32m6N5oqQy-sP9H5ugDwLVgPYK5EhiOIc_qisOZ9YGOSrrqbppEoZsBp9GbpwfSNJkxgtoHaq_v-PeL9Ilb90zhVMhH0hPM133409_kurpZwGRplex8AvlPNBzfpaHPZHwWhq_9rZHngVdUzW6A2GmiFv0-AwzwNdhDA4o3MtOv3SV9ZafY6hFtb7AtIR_L1H0_670KdRhQj_TNsAurAge7qdYT0"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container border border-secondary-container/50">Promotion</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-tertiary-container/20 text-on-tertiary-container">Severity: Medium</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-auto">Yesterday</span>
+</div>
+<h3 class="font-body-lg text-body-lg font-medium text-on-surface">'SafeGuard Spring Sale'</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">AI Summary: SafeGuard initiated a 'Spring Sale' campaign offering up to 15% off consumer-grade models. Impact on enterprise sector expected to be minimal, but tracking bundle deals.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

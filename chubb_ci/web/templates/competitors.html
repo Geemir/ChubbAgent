@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}竞争对手{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">竞争对手目录</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">正在监控 {{ competitors|length }} 家竞争对手在中国市场的动态。</p>
+  </div>
+  <div class="flex items-center gap-sm">
+    <a href="/products" class="px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors">查看产品</a>
+    <button class="flex items-center gap-sm px-md py-2 rounded-lg bg-primary-container text-on-primary text-label-md hover:opacity-90 transition-opacity">
+      <span class="material-symbols-outlined" style="font-size:18px;">add</span>添加竞争对手
+    </button>
+  </div>
+</div>
+
+{% if competitors %}
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+  {% for c in competitors %}
+  <div class="bg-surface-container-lowest rounded-xl p-md border {% if c.is_focus %}border-tertiary-fixed-dim border-2{% else %}border-outline-variant/30{% endif %} shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col relative">
+    {% if c.is_focus %}
+    <span class="absolute -top-3 left-4 px-2 py-0.5 rounded bg-tertiary-fixed-dim text-on-tertiary-fixed font-label-sm text-label-sm">重点关注</span>
+    {% endif %}
+    <div class="flex items-start justify-between mb-md">
+      <div class="w-12 h-12 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-md">{{ c.name[:1] }}</div>
+      <div class="flex items-center gap-xs">
+        {% if c.status == "change" %}
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">
+          <span class="material-symbols-outlined" style="font-size:14px;">warning</span>检测到变化
+        </span>
+        {% elif c.monitored_products > 0 %}
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-success-container text-on-success-container font-label-sm text-label-sm">
+          <span class="w-2 h-2 rounded-full bg-on-success-container"></span>活跃
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">档案</span>
+        {% endif %}
+        <button onclick="__toggleFocus('{{ c.name }}', this)" title="{% if c.is_focus %}取消重点关注{% else %}标记为重点关注{% endif %}"
+                class="p-1 rounded-full hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined {% if c.is_focus %}text-tertiary-fixed-dim{% else %}text-outline{% endif %}" style="font-size:20px;{% if c.is_focus %}font-variation-settings:'FILL' 1;{% endif %}">star</span>
+        </button>
+      </div>
+    </div>
+    <h3 class="font-headline-md text-headline-md text-on-surface"><a href="/competitors/{{ c.name }}" class="hover:underline hover:text-primary-container transition-colors">{{ c.name }}</a></h3>
+    {% if c.url %}
+    <a href="{{ c.url }}" target="_blank" class="inline-flex items-center gap-1 text-secondary font-body-sm text-body-sm hover:underline mt-xs truncate">
+      {{ c.url|replace("https://","")|replace("http://","") }} <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
+    </a>
+    {% endif %}
+    <p class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm mt-xs">
+      <span class="material-symbols-outlined" style="font-size:16px;">storefront</span>{{ c.channels or "官网" }}
+    </p>
+    <div class="mt-md pt-md border-t border-outline-variant/30 space-y-sm">
+      <a href="/competitors/{{ c.name }}" class="flex items-center gap-1 text-secondary font-label-md text-label-md hover:underline">查看品牌档案 <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span></a>
+      <div class="flex items-center justify-between">
+        <span class="text-body-sm text-on-surface-variant">在监产品</span>
+        <span class="font-body-md font-semibold text-on-surface tabular-nums">{{ c.monitored_products }}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-body-sm text-on-surface-variant">最近抓取</span>
+        <span class="font-body-md text-on-surface tabular-nums">{{ c.last_crawl }}</span>
+      </div>
+      <div class="flex items-center justify-between bg-surface-container-low rounded-lg px-sm py-sm mt-sm">
+        <span class="text-body-sm text-on-surface-variant">价格波动 (30天)</span>
+        <span class="font-body-md font-semibold tabular-nums {% if c.volatility >= 5 %}text-tertiary-fixed-dim{% elif c.volatility > 0 %}text-secondary{% else %}text-on-surface-variant{% endif %}">
+          {{ '%.1f'|format(c.volatility) }}%
+        </span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% else %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <p class="text-on-surface-variant text-body-lg">暂无竞争对手数据。请在 <code>config/sources.yaml</code> 启用监控源并运行抓取，或执行 <code>chubb-ci seed-demo</code> 载入演示数据。</p>
+</div>
+{% endif %}
+
+{% endblock %}
