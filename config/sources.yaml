@@ -129,6 +129,40 @@ sources:
       - https://search.suning.com/%E8%89%BE%E8%B0%B1%E4%BF%9D%E9%99%A9%E7%AE%B1/
     notes: 苏宁搜索「艾谱保险箱」。
 
+  # 苏宁实际在售的国产品牌（品牌筛选确认：得力/甬康达/虎王/驰球）——真实价格覆盖
+  - name: yongkangda-suning-search
+    company: 甬康达 Yongkangda
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E7%94%AC%E5%BA%B7%E8%BE%BE%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    notes: 苏宁搜索「甬康达保险柜」。苏宁在售国产品牌，真实价格。
+
+  - name: huwang-suning-search
+    company: 虎王 Huwang
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E8%99%8E%E7%8E%8B%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    notes: 苏宁搜索「虎王保险柜」。苏宁在售国产品牌。
+
+  - name: chiqiu-suning-search
+    company: 驰球 CIIQ
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 苏宁
+    frequency: daily
+    urls:
+      - https://search.suning.com/%E9%A9%B0%E7%90%83%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    notes: 苏宁搜索「驰球保险柜」。苏宁在售国产品牌。
+
   - name: tiger-suning-search
     company: 虎牌 Tiger
     enabled: false
@@ -156,11 +190,11 @@ sources:
   # frequency=manual → excluded from scheduled daily/weekly runs. Used by `crawl --demo`.
   - name: demo-local-competitor
     company: 演示竞品 Demo
-    enabled: true
+    enabled: false
     fetcher: local
     page_type: product
     channel: 官网
     frequency: manual
     urls:
       - tests/fixtures/competitor_v1.html
-    notes: 离线演示源（`chubb-ci crawl --demo`）。不参与定时抓取。
+    notes: 离线演示源。`chubb-ci crawl --demo` 会按名强制运行它（无需启用），不参与真实抓取。

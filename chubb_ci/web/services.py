@@ -38,6 +38,13 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _safe(fn):
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001
+        return "—"
+
+
 def _aware(dt: datetime | None) -> datetime | None:
     """Normalize possibly-naive DB timestamps to UTC-aware for safe comparison."""
     if dt is None:
@@ -324,6 +331,76 @@ class DashboardService:
             "companies": sorted(companies),
         }
 
+    # ------------------------------------------------- settings / status
+    def system_status(self) -> dict:
+        from chubb_ci.config.sources import load_sources
+        from chubb_ci.llm.factory import resolve_model
+
+        settings = self.settings
+        products = self.repo.all_products()
+        latest = _latest_per_product(products)
+        priced = sum(1 for p in latest.values() if p.price)
+
+        # channel coverage (real data lands under 官网/苏宁/分析报告/…)
+        ch_counts: dict[str, int] = defaultdict(int)
+        for snap_company_key, p in latest.items():
+            ch = getattr(p, "channel", None)
+            # ProductRecord has no channel; derive from source_name prefix.
+            src = (p.source_name or "")
+            label = ("分析报告" if src.startswith("pptx-") else
+                     "苏宁" if "suning" in src else
+                     "智能体" if src.startswith("agent-") else
+                     "官网" if src else "—")
+            ch_counts[label] += 1
+
+        try:
+            sources = load_sources(settings.sources_path)
+        except Exception:
+            sources = []
+        src_rows = [{
+            "name": s.name, "company": s.company, "enabled": s.enabled,
+            "fetcher": s.fetcher.value, "channel": s.channel,
+            "page_type": s.page_type.value, "frequency": s.frequency,
+        } for s in sources]
+
+        run = self.repo.latest_run()
+        brands = self.repo.all_brands()
+        return {
+            "llm": {
+                "provider": settings.llm_provider,
+                "key_set": bool(settings.llm_api_key),
+                "extract_model": _safe(lambda: resolve_model(settings, "extract")),
+                "daily_model": _safe(lambda: resolve_model(settings, "daily")),
+                "weekly_model": _safe(lambda: resolve_model(settings, "weekly")),
+            },
+            "search": {
+                "provider": settings.search_provider,
+                "configured": settings.search_provider != "none" and bool(settings.search_api_key),
+            },
+            "schedule": {"daily_cron": settings.daily_cron,
+                         "weekly_cron": settings.weekly_cron, "tz": settings.timezone},
+            "agent": {"max_iterations": settings.agent_max_iterations,
+                      "max_cost_cny": settings.agent_max_cost_cny,
+                      "verify_threshold": settings.agent_verify_threshold},
+            "coverage": {
+                "products": len(latest), "priced": priced,
+                "priced_pct": round(priced / len(latest) * 100) if latest else 0,
+                "brands": len([b for b in brands if not b.is_own]),
+                "focus_brands": len([b for b in brands if b.is_focus]),
+                "own_products": len(self.repo.own_products()),
+                "insights": len(self.repo.all_insights()),
+                "channels": dict(sorted(ch_counts.items(), key=lambda kv: -kv[1])),
+            },
+            "sources": src_rows,
+            "sources_enabled": sum(1 for s in sources if s.enabled),
+            "last_run": {
+                "kind": run.kind if run else None,
+                "when": _time_ago(run.started_at) if run else "从未运行",
+                "products": run.products_extracted if run else 0,
+            },
+            "db_url": settings.database_url,
+        }
+
     # ------------------------------------------------- insights (dashboard)
     def insight_summary(self) -> dict:
         insights = self.repo.all_insights()
@@ -411,6 +488,53 @@ class DashboardService:
             "quad": quad,
             "own_count": len(own),
         }
+
+    # ------------------------------------------------- value leaderboard
+    def value_leaderboard(self) -> dict:
+        """Per-brand value metrics — the empirical negotiation ammo (doc §3).
+
+        Uses only real, computable fields: retail price (all), 防盗等级分 (certs), and
+        元/升 / 元/公斤 where volume/weight exist (mostly 集宝 + crawled products; deck
+        products lack dims, shown as — honestly).
+        """
+        buckets: dict[str, dict] = {}
+
+        def add(brand: str, is_own: bool, price, cap, kg, sec):
+            b = buckets.setdefault(brand, {"is_own": is_own, "prices": [], "ppl": [],
+                                           "ppk": [], "sec": [], "n": 0})
+            b["n"] += 1
+            if price:
+                b["prices"].append(price)
+                ppl = price_per_l(price, cap)
+                ppk = price_per_kg(price, kg)
+                if ppl:
+                    b["ppl"].append(ppl)
+                if ppk:
+                    b["ppk"].append(ppk)
+            if sec:
+                b["sec"].append(sec)
+
+        for p in self.repo.own_products():
+            add("集宝 ChubbSafes", True, p.price, p.capacity_l, p.weight_kg, p.security_score)
+        for p in _latest_per_product(self.repo.all_products()).values():
+            add(p.company, False, p.price, p.capacity_l, p.weight_kg, p.security_score)
+
+        def avg(xs):
+            return round(sum(xs) / len(xs)) if xs else None
+
+        rows = []
+        for brand, b in buckets.items():
+            if not b["prices"]:
+                continue
+            rows.append({
+                "brand": brand, "is_own": b["is_own"], "count": b["n"],
+                "avg_price": avg(b["prices"]),
+                "min_price": min(b["prices"]), "max_price": max(b["prices"]),
+                "avg_ppl": avg(b["ppl"]), "avg_ppk": avg(b["ppk"]),
+                "avg_sec": round(sum(b["sec"]) / len(b["sec"]), 1) if b["sec"] else None,
+            })
+        rows.sort(key=lambda r: r["avg_price"])
+        return {"rows": rows}
 
     # ------------------------------------------------- brand profile page
     def brand_profile(self, name: str) -> dict | None:

@@ -84,13 +84,58 @@
     </ul>
   </div>
 </section>
+
+<!-- Value leaderboard (empirical negotiation ammo) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">各品牌均价（集宝黄色高亮）</h2>
+    <div class="flex-1 min-h-[320px]"><canvas id="avgPriceChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+    <div class="px-lg py-md border-b border-outline-variant/30">
+      <h2 class="font-headline-md text-headline-md text-on-surface">价值对比榜</h2>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">按均价排序；元/升、元/公斤仅在有尺寸/重量数据时计算（谈判用性价比论据）。</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-body-md">
+        <thead>
+          <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+            <th class="text-left px-md py-sm">品牌</th>
+            <th class="text-right px-md py-sm">在售</th>
+            <th class="text-right px-md py-sm">均价</th>
+            <th class="text-right px-md py-sm">价格区间</th>
+            <th class="text-right px-md py-sm">元/升</th>
+            <th class="text-right px-md py-sm">防盗分</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in leaderboard.rows %}
+          <tr class="border-b border-outline-variant/40 {% if r.is_own %}bg-tertiary-fixed/20{% endif %} hover:bg-secondary-fixed/40 transition-colors">
+            <td class="px-md py-sm font-medium {% if r.is_own %}text-primary{% else %}text-on-surface{% endif %}">
+              {% if r.is_own %}<span class="material-symbols-outlined align-middle" style="font-size:16px;font-variation-settings:'FILL' 1;color:#c89c15">star</span> {% endif %}{{ r.brand }}
+            </td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant">{{ r.count }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface font-medium">¥{{ '{:,.0f}'.format(r.avg_price) }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant font-body-sm text-body-sm">¥{{ '{:,.0f}'.format(r.min_price) }}–{{ '{:,.0f}'.format(r.max_price) }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant">{{ r.avg_ppl if r.avg_ppl is not none else "—" }}</td>
+            <td class="px-md py-sm text-right tabular-nums {% if r.avg_sec %}text-on-surface{% else %}text-on-surface-variant{% endif %}">{{ r.avg_sec if r.avg_sec is not none else "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
 {% endif %}
 
 {% endblock %}
 {% block scripts %}
 <script id="map-data" type="application/json">{{ map|tojson }}</script>
+<script id="lb-data" type="application/json">{{ leaderboard|tojson }}</script>
 <script>
   window.__marketMap = JSON.parse(document.getElementById('map-data').textContent);
+  window.__leaderboard = JSON.parse(document.getElementById('lb-data').textContent);
   window.__initMarketMap && window.__initMarketMap();
+  window.__initLeaderboard && window.__initLeaderboard();
 </script>
 {% endblock %}

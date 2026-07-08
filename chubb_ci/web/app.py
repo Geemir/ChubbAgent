@@ -99,7 +99,9 @@ def benchmark(request: Request):
 @app.get("/market-map", response_class=HTMLResponse)
 def market_map(request: Request):
     with session_scope(get_settings()) as session:
-        ctx = _ctx(request, "marketmap", map=_service(session).market_map())
+        svc = _service(session)
+        ctx = _ctx(request, "marketmap", map=svc.market_map(),
+                   leaderboard=svc.value_leaderboard())
     return templates.TemplateResponse(request, "market_map.html", ctx)
 
 
@@ -134,6 +136,34 @@ def market_trends(request: Request):
 @app.get("/research-agent", response_class=HTMLResponse)
 def research_agent(request: Request):
     return templates.TemplateResponse(request, "research_agent.html", _ctx(request, "agent"))
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    with session_scope(get_settings()) as session:
+        ctx = _ctx(request, "settings", status=_service(session).system_status())
+    return templates.TemplateResponse(request, "settings.html", ctx)
+
+
+@app.get("/api/status/llm")
+def llm_status() -> JSONResponse:
+    """Live connectivity probe: does the configured LLM key actually work?"""
+    from chubb_ci.llm.base import LLMError
+    from chubb_ci.llm.factory import build_llm, resolve_model
+
+    settings = get_settings()
+    if not settings.llm_api_key:
+        return JSONResponse({"ok": False, "message": "未配置 API Key（CHUBB_LLM_API_KEY）"})
+    try:
+        llm = build_llm(settings)
+        resp = llm.complete(system="reply one word", user="say OK",
+                            model=resolve_model(settings, "daily"))
+        return JSONResponse({"ok": True, "message": f"连接正常（{resp.model}）",
+                             "reply": resp.content.strip()[:20]})
+    except LLMError as exc:
+        return JSONResponse({"ok": False, "message": f"连接失败：{str(exc)[:160]}"})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "message": f"错误：{str(exc)[:160]}"})
 
 
 # =========================================================================

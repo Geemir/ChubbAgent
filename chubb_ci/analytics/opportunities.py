@@ -14,6 +14,9 @@ from chubb_ci.analytics.capacity_bands import BandRow
 from chubb_ci.analytics.head_to_head import HeadToHead
 
 PRICE_ANOMALY_THRESHOLD_PCT = 5.0
+# Above this the two products are different tiers, not price peers — a positioning
+# difference, not a "reprice this" anomaly. Keeps insights business-sensible.
+PRICE_ANOMALY_MAX_PCT = 80.0
 GAP_THRESHOLD = 3
 
 
@@ -38,10 +41,13 @@ def detect_opportunities(
     """Apply the three rules and return the detected insights (deterministic order)."""
     insights: list[InsightData] = []
 
-    # Rule 1 — pricing anomalies on counterpart pairs.
+    # Rule 1 — pricing anomalies on counterpart pairs (near-peers only).
     for c in comparisons:
-        if c.price_diff_pct is None or abs(c.price_diff_pct) <= price_threshold_pct:
+        if c.price_diff_pct is None:
             continue
+        mag = abs(c.price_diff_pct)
+        if mag <= price_threshold_pct or mag > PRICE_ANOMALY_MAX_PCT:
+            continue  # too small = noise; too large = different tier, not an anomaly
         direction = "高于" if c.price_diff_pct > 0 else "低于"
         severity = "High" if abs(c.price_diff_pct) >= 15 else "Med"
         insights.append(InsightData(
@@ -59,21 +65,27 @@ def detect_opportunities(
         ))
 
     # Rule 2 — capacity-band market gaps.
-    for b in bands:
-        if not b.is_gap:
-            continue
-        insights.append(InsightData(
-            insight_type="market_gap",
-            severity="Med",
-            title=f"容量段「{b.label}」竞品仅 {b.comp_count} 款 — 市场空档",
-            detail=(
-                f"{b.label} 容量段竞品在售仅 {b.comp_count} 款（阈值 {GAP_THRESHOLD}），"
-                f"我司在售 {b.own_count} 款。竞争密度低，"
-                + ("可考虑补充产品线抢占空档。" if b.own_count == 0
-                   else "我司已有布局，可加大该段位推广。")
-            ),
-            payload={"band": b.label, "comp_count": b.comp_count, "own_count": b.own_count},
-        ))
+    # Only meaningful when we actually have competitor capacity data; competitors
+    # whose volume is unknown (e.g. deck rows w/o dimensions) don't fall into any
+    # band, which would otherwise make every band look like a false "gap".
+    total_comp_in_bands = sum(b.comp_count for b in bands)
+    if total_comp_in_bands >= GAP_THRESHOLD:
+        for b in bands:
+            if not b.is_gap:
+                continue
+            insights.append(InsightData(
+                insight_type="market_gap",
+                severity="Med",
+                title=f"容量段「{b.label}」竞品仅 {b.comp_count} 款 — 市场空档",
+                detail=(
+                    f"{b.label} 容量段竞品在售仅 {b.comp_count} 款（阈值 {GAP_THRESHOLD}），"
+                    f"我司在售 {b.own_count} 款。竞争密度低，"
+                    + ("可考虑补充产品线抢占空档。" if b.own_count == 0
+                       else "我司已有布局，可加大该段位推广。")
+                ),
+                payload={"band": b.label, "comp_count": b.comp_count,
+                         "own_count": b.own_count},
+            ))
 
     # Rule 3 — logistics advantages (negative 周期差).
     for c in comparisons:

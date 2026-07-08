@@ -176,6 +176,49 @@ brands:
     supply_chain: 意大利全程制造，跨境代理分销。
     warranty: 依赖国际配件发运，本地售后弱。
 
+  # --- 苏宁在售国产品牌（电商实时抓取，档案待完善）------------------------
+  - name: 甬康达 Yongkangda
+    name_en: Yongkangda
+    positioning: 国产电商渠道品牌，主打家用/办公中低价位保险柜。
+    competition_tier: 入门级国产替代
+    target_audience: 价格敏感的家庭与小微办公用户（电商渠道）。
+    strengths:
+      - 苏宁/电商渠道铺货充分，价格亲民
+    shortcomings:
+      - 品牌高端认知与高安防产品线薄弱
+    price_architecture: []
+    market_scale: 苏宁在售国产保险柜品牌。
+    supply_chain: 国内生产，电商为主。
+    warranty: 常规国内质保。
+
+  - name: 虎王 Huwang
+    name_en: Huwang
+    positioning: 国产电商渠道品牌，家用保险柜为主。
+    competition_tier: 入门级国产替代
+    target_audience: 价格敏感的家庭用户（电商渠道）。
+    strengths:
+      - 电商销量与铺货充分
+    shortcomings:
+      - 品牌力与高安防能力有限
+    price_architecture: []
+    market_scale: 苏宁在售国产保险柜品牌。
+    supply_chain: 国内生产，电商为主。
+    warranty: 常规国内质保。
+
+  - name: 驰球 CIIQ
+    name_en: CIIQ
+    positioning: 国产电商渠道品牌，家用/办公保险柜。
+    competition_tier: 入门级国产替代
+    target_audience: 价格敏感的家庭与办公用户（电商渠道）。
+    strengths:
+      - 电商渠道价格竞争力强
+    shortcomings:
+      - 高端与专业安防产品线薄弱
+    price_architecture: []
+    market_scale: 苏宁在售国产保险柜品牌。
+    supply_chain: 国内生产，电商为主。
+    warranty: 常规国内质保。
+
   # --- 以下两个品牌来自竞品分析 PPTX（保险柜市场竞品分析V7），非 §6 档案 ---
   - name: 善卫 SentrySafe
     name_en: SentrySafe

@@ -81,12 +81,23 @@ with standardized metrics 容积/防火h/防盗分/元/升/元/公斤/交期 + C
 - `chubb_ci/analytics/` — head-to-head 对标 math, capacity-band matrix, and the three
   opportunity rules (|price diff|>5%, band competitors <3, negative 周期差) → `Insight` rows
   regenerated after every crawl and injected into daily/weekly report prompts (facts-only).
+- **`chubb-ci load-real`** — build an **all-real dataset** (brands + 集宝 catalog + deck +
+  live crawl of every enabled real source), with **no fabricated competitors**. This is the
+  default the dashboard should show. (`seed-demo` remains for offline/no-network demos.)
 - `chubb-ci sync-brands` — sync `config/brands.yaml` (9 strategic profiles) into the DB.
 - `chubb-ci import-catalog ChubbProductsList.xlsx` — import the 集宝 own catalog
   (52 models, 经典/轻奢/防火柜系列) used for benchmarking.
 - `chubb-ci ingest-pptx CompetitorAnalysisV7.pptx` — deterministic import of the marketing
   deck's per-brand product tables (24 products / 8 brands: prices, e-commerce sales volumes,
   certifications) as 分析报告-channel records.
+
+### Settings / 系统状态 page
+
+`/settings` shows a **live LLM connectivity check** (green "连接正常" = the API key works),
+search-provider status, agent budget, schedule, real-data coverage (products/priced/brands
+by source channel), and the full monitored-source list. Insight rules are guarded for
+business sanity: pricing anomalies only flag near-peers (5–80% gap, not different tiers),
+and capacity-band "market gaps" are suppressed when competitor volume data is unavailable.
 - **重点关注 (key competitors)** — star any brand from the 竞争对手 page or its profile
   (`POST /api/brands/{name}/focus`); focused brands sort first with a yellow badge.
   Initial flags come from `focus:` in brands.yaml; UI toggles always win over re-syncs.
@@ -185,12 +196,24 @@ works for CLI-launched runs too, with automatic polling fallback in old browsers
 ## Marketplace price crawling (Playwright)
 
 ```bash
-uv sync --extra browser && uv run playwright install chromium
+uv sync --extra browser
+uv run playwright install chromium chromium-headless-shell
 ```
+
+> **Gotcha:** if crawls suddenly fail with *"Executable doesn't exist"*, a Playwright
+> upgrade changed the required browser build — just re-run the `playwright install` line.
+> That (not site blocking) is the usual cause of marketplace sources erroring.
+
+**"0 changes" is normal on a first crawl.** Change detection is time-based: the diff
+engine compares a source against its previous snapshot. A first/baseline crawl (or right
+after `load-real`, which resets) has nothing to compare against → 0 changes. Unchanged
+pages are skipped by content hash. Changes appear when a source is re-crawled *after* a
+real price/stock/promo move. The crawl summary now reports this explicitly:
+`抓取成功 N（其中首次基线 B）· 内容未变跳过 S · 被拦截 X · 检测到 C 处变化`.
 
 Field findings (2026-07): **JD search/mobile now force a login wall** (kept as a disabled
 template pending an enterprise-cookie approach); **苏宁 search pages render full price
-tiles** after lazy-load scrolling. Live sources `deli-suning-search` / `aipu-suning-search`
-are enabled and pull real SKUs+prices daily; the extraction prompt keeps only products
-belonging to the source's brand (search pages mix brands). Anti-bot challenges are
+tiles** after lazy-load scrolling. Live 苏宁 sources for the brands Suning actually carries (得力/艾谱/甬康达/虎王/驰球)
+pull real SKUs+prices daily; the extraction prompt keeps only products belonging to the
+source's brand (search pages mix brands). Anti-bot challenges are
 detected and skipped gracefully (`status=blocked`), never crashing the pipeline.

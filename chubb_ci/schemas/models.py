@@ -16,7 +16,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
 
-from pydantic import BaseModel, Field as PydField
+import re
+
+from pydantic import BaseModel, Field as PydField, field_validator
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
@@ -86,6 +88,16 @@ class ExtractedProduct(BaseModel):
     status_label: str | None = PydField(default=None, description="页面标签：热卖/爆款/新品/限量 等")
     source_url: str | None = PydField(default=None, description="该产品所在页面 URL")
 
+    @field_validator("sales_volume", "lead_time_days", "price", "capacity_l",
+                     "weight_kg", "width_mm", "depth_mm", "height_mm", mode="before")
+    @classmethod
+    def _coerce_number(cls, v):
+        """LLMs return '1000+', '¥2,999', '约50' etc. — extract the leading number."""
+        if v is None or isinstance(v, (int, float)):
+            return v
+        m = re.search(r"-?\d[\d,]*(?:\.\d+)?", str(v))
+        return m.group(0).replace(",", "") if m else None
+
     def product_key(self) -> str:
         """Stable identity for matching across snapshots (normalized name)."""
         from chubb_ci.diff.matching import normalize_product_key
@@ -112,7 +124,9 @@ class CrawlRun(SQLModel, table=True):
     status: str = "running"
     sources_ok: int = 0
     sources_failed: int = 0
+    sources_blocked: int = 0
     sources_skipped: int = 0
+    baselines: int = 0
     products_extracted: int = 0
     events_detected: int = 0
     tokens_in: int = 0

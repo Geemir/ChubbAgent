@@ -32,9 +32,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Headless-browser fetching for JS-heavy / marketplace pages (Tmall, JD).
-# Install with: uv sync --extra browser  &&  playwright install chromium
-browser = ["playwright>=1.45"]
+# Headless-browser fetching for JS-heavy / marketplace pages (苏宁 etc.).
+# After install/upgrade you MUST (re)download browsers, else fetches error with
+# "Executable doesn't exist":  uv run playwright install chromium chromium-headless-shell
+# Pinned minor range so `uv sync` won't silently need a browser re-download.
+browser = ["playwright>=1.61,<1.62"]
 # Anthropic (Claude) provider — demonstrates provider-swappability.
 anthropic = ["anthropic>=0.34"]
 

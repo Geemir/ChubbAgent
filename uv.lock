@@ -236,7 +236,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.40" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "pandas", specifier = ">=2.2" },
-    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.45" },
+    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.61,<1.62" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-settings", specifier = ">=2.3" },
     { name = "python-dateutil", specifier = ">=2.9" },
