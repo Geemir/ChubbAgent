@@ -71,12 +71,22 @@ def test_band_matrix_stats_and_gap():
 # ---------------------------------------------------------------- opportunities
 def test_detect_all_three_rules():
     h = compare_pair(OWN(), COMP())               # +20% price, -15d lead
-    bands = band_matrix([COMP(capacity_l=80, price=5000)], [OWN()], gap_threshold=3)
+    # Enough competitor capacity data to judge gaps: 3 in the small band, none elsewhere.
+    comps = [COMP(capacity_l=15, price=800), COMP(capacity_l=20, price=900),
+             COMP(capacity_l=25, price=1000)]
+    bands = band_matrix(comps, [OWN(capacity_l=80)], gap_threshold=3)
     insights = detect_opportunities([h], bands)
     types = {i.insight_type for i in insights}
     assert "pricing_anomaly" in types             # |20%| > 5%
-    assert "market_gap" in types                  # bands with <3 competitors
+    assert "market_gap" in types                  # 60-100L band has 0 competitors
     assert "logistics_advantage" in types         # lead_delta = -15
+
+
+def test_market_gap_suppressed_when_no_competitor_capacity():
+    # Competitors with unknown volume don't fall into bands → no false gaps.
+    bands = band_matrix([COMP(capacity_l=None, price=5000)], [OWN(capacity_l=80)])
+    insights = detect_opportunities([], bands)
+    assert all(i.insight_type != "market_gap" for i in insights)
 
 
 def test_no_anomaly_within_threshold():

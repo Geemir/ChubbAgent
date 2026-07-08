@@ -98,11 +98,19 @@ def crawl_cmd(
     freq_filter = frequency or (kind if kind in ("daily", "weekly") else None)
     summary = run_crawl(settings, kind=kind, frequency_filter=freq_filter)
     console.print(
-        f"[green]✓[/] run #{summary.run_id}: ok={summary.sources_ok} "
-        f"failed={summary.sources_failed} skipped={summary.sources_skipped} "
-        f"products={summary.products_extracted} events={summary.events_detected} "
-        f"cost≈¥{summary.est_cost_cny}"
+        f"[green]✓[/] run #{summary.run_id}：抓取成功 {summary.sources_ok}"
+        f"（其中首次基线 {summary.baselines}）· 内容未变跳过 {summary.sources_skipped}"
+        f"· 被拦截 {summary.sources_blocked} · 出错 {summary.sources_failed}"
+        f" · 采集 {summary.products_extracted} 款 · [bold]检测到 {summary.events_detected} 处变化[/]"
+        f" · 成本≈¥{summary.est_cost_cny}"
     )
+    if summary.events_detected == 0 and summary.baselines > 0:
+        console.print(
+            "[yellow]ℹ[/] 本次多为[bold]首次基线[/]采集，无历史可对比，故 0 变化属正常。"
+            "再次抓取（价格/促销/上下架有变动时）即会出现变化。"
+        )
+    if summary.sources_blocked:
+        console.print(f"[yellow]⚠[/] {summary.sources_blocked} 个来源被反爬拦截（已优雅跳过）。")
     if report:
         draft = generate_daily(settings, run_id=summary.run_id)
         console.print(f"[green]✓[/] 报告已生成: {draft.title}")
@@ -114,12 +122,13 @@ def _run_demo(settings) -> None:
     from chubb_ci.pipeline import generate_daily, run_crawl
 
     llm = demo_fake_llm()
+    demo_src = ["demo-local-competitor"]
     console.print("[cyan]demo 1/2[/] 建立基线 (competitor_v1)…")
-    run_crawl(settings, kind="demo", frequency_filter=None, llm=llm)
+    run_crawl(settings, kind="demo", llm=llm, only_names=demo_src)
 
     console.print("[cyan]demo 2/2[/] 模拟变化 (competitor_v2)…")
     override = {"tests/fixtures/competitor_v1.html": "tests/fixtures/competitor_v2.html"}
-    summary = run_crawl(settings, kind="demo", frequency_filter=None, llm=llm, override_urls=override)
+    summary = run_crawl(settings, kind="demo", llm=llm, override_urls=override, only_names=demo_src)
     console.print(
         f"[green]✓[/] 检测到 {summary.events_detected} 处变化 (run #{summary.run_id})"
     )
@@ -182,6 +191,22 @@ def dashboard_cmd(
 
     console.print(f"[green]➜[/] 仪表盘: http://{host}:{port}")
     uvicorn.run("chubb_ci.web.app:app", host=host, port=port, reload=reload)
+
+
+@app.command("load-real")
+def load_real_cmd(
+    crawl: bool = typer.Option(True, "--crawl/--no-crawl", help="是否实时抓取真实来源"),
+) -> None:
+    """Build an ALL-REAL dataset (deck + catalog + live crawl; no fabricated competitors)."""
+    from chubb_ci.tools.load_real import load_real
+
+    r = load_real(get_settings(), crawl=crawl)
+    console.print(
+        f"[green]✓[/] 已载入真实数据：{r['brands']} 个品牌档案、{r['own_products']} 款集宝产品、"
+        f"{r['deck_products']} 款竞品(分析报告)、抓取入库 {r['crawled_products']} 款"
+        f"（{r['crawled_ok']} 个来源）；合计 {r['total_products']} 款、{r['insights']} 条洞察。"
+    )
+    console.print("运行 [bold]chubb-ci dashboard[/] 查看仪表盘（真实数据）。")
 
 
 @app.command("seed-demo")

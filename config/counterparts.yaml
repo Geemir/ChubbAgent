@@ -1,41 +1,20 @@
 # =========================================================================
 # 对标 (head-to-head) pairs: our model ↔ competitor functional counterpart.
-# Names are matched via normalized product keys, so minor punctuation/spacing
-# differences are tolerated. Edit freely; re-seed with `chubb-ci seed-demo`
-# or they are matched live against the latest crawled products.
+# Names match against normalized product keys, so minor punctuation/spacing
+# differences are tolerated. Competitor products below come from the marketing
+# deck (分析报告 channel, real prices); own products from ChubbProductsList.xlsx.
+# Pairs are genuine functional/price near-peers — several are declared verbatim
+# in the deck ("与viper对标" / "防火功能接近集宝" / "功能贴近隽雅").
 # =========================================================================
 
 version: 1
 
 pairs:
-  # --- vs 永发 (demo-seeded + crawled) ------------------------------------
-  - own_product: Viper梵客 35
-    comp_company: 永发 Yongfa
-    comp_product: 永发 家用指纹保险柜
-    note: 入门家用电子/指纹柜功能对标
-
-  - own_product: Viper梵客 50
-    comp_company: 永发 Yongfa
-    comp_product: 永发 商用大型保险柜
-    note: 中型商用对标
-
-  # --- vs 迪堡 (demo-seeded) ----------------------------------------------
-  - own_product: Firefile M-135
-    comp_company: 迪堡 Diebold
-    comp_product: 迪堡 金融机具保险柜
-    note: 防火/商用金融场景对标
-
-  # --- vs 艾谱 (demo-seeded) ----------------------------------------------
-  - own_product: Viper梵客 35
-    comp_company: 艾谱 AIPU
-    comp_product: 艾谱 FDX-A/D-30 指纹保险箱
-    note: 家用指纹箱直接对标
-
-  # --- 来自竞品分析 PPTX 的官方对标 (分析报告 channel) ----------------------
+  # --- deck-declared 对标 (authoritative) --------------------------------
   - own_product: Viper梵客 35
     comp_company: 德国百卫特 Burg Wächter
     comp_product: CL系列
-    note: PPTX 明确标注「欧标防盗防火，与viper对标」
+    note: PPTX 明确标注「欧标防盗防火，与viper对标」（S2 + 欧标30min）
 
   - own_product: Firefile M-135
     comp_company: 艾谱 AIPU
@@ -46,3 +25,24 @@ pairs:
     comp_company: 盾牌 Dunpai
     comp_product: 帝尚系列
     note: PPTX 标注「防火功能接近集宝」（UL 60min + CSP 防盗）
+
+  # --- price/tier near-peers (real deck prices) --------------------------
+  - own_product: DPC M-320
+    comp_company: 福美德 Format
+    comp_product: TAURUS系列
+    note: 高端防火/轻奢价位对标（¥7.98万 vs ¥8万，近乎持平）
+
+  - own_product: DPC M-670
+    comp_company: 福美德 Format
+    comp_product: DLW系列
+    note: 顶级防火定制对标（UL 90min，¥10万级）
+
+  - own_product: Viper梵客 50
+    comp_company: 艾谱 AIPU
+    comp_product: 尊睿系列
+    note: 中高端家用近价位对标
+
+  - own_product: Firefile M-135
+    comp_company: 善卫 SentrySafe
+    comp_product: STW系列
+    note: 防火专业品牌对标（UL 2H 防火）

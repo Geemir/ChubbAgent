@@ -41,7 +41,9 @@ class CrawlSummary(BaseModel):
     kind: str
     sources_ok: int = 0
     sources_failed: int = 0
+    sources_blocked: int = 0
     sources_skipped: int = 0
+    baselines: int = 0          # first-time captures (no prior snapshot to diff against)
     products_extracted: int = 0
     events_detected: int = 0
     tokens_in: int = 0
@@ -133,8 +135,13 @@ def run_crawl(
     frequency_filter: str | None = None,
     llm: LLMClient | None = None,
     override_urls: dict[str, str] | None = None,
+    only_names: list[str] | None = None,
 ) -> CrawlSummary:
-    """Fetch + extract + diff all due sources; persist snapshots, products, events."""
+    """Fetch + extract + diff all due sources; persist snapshots, products, events.
+
+    ``only_names`` crawls exactly those source names (bypassing enabled/cadence filters);
+    used by the offline demo to run a disabled fixture source.
+    """
     settings = settings or get_settings()
     init_db(settings)
     llm = llm or build_llm(settings)
@@ -142,7 +149,11 @@ def run_crawl(
     domain_context = settings.load_domain_context()
     override_urls = override_urls or {}
 
-    sources = enabled_sources(load_sources(settings.sources_path), frequency_filter)
+    all_sources = load_sources(settings.sources_path)
+    if only_names:
+        sources = [s for s in all_sources if s.name in only_names]
+    else:
+        sources = enabled_sources(all_sources, frequency_filter)
     logger.info("crawl kind={} sources={}", kind, [s.name for s in sources])
 
     with session_scope(settings) as session:
@@ -168,7 +179,9 @@ def run_crawl(
         # finalize run bookkeeping
         run.sources_ok = summary.sources_ok
         run.sources_failed = summary.sources_failed
+        run.sources_blocked = summary.sources_blocked
         run.sources_skipped = summary.sources_skipped
+        run.baselines = summary.baselines
         run.products_extracted = summary.products_extracted
         run.events_detected = summary.events_detected
         run.tokens_in = summary.tokens_in
@@ -183,9 +196,11 @@ def run_crawl(
         refresh_insights(repo, run_id=run.id)
 
     logger.info(
-        "crawl done: ok={} failed={} skipped={} products={} events={} cost≈¥{}",
-        summary.sources_ok, summary.sources_failed, summary.sources_skipped,
-        summary.products_extracted, summary.events_detected, summary.est_cost_cny,
+        "crawl done: ok={} baselines={} blocked={} error={} skipped={} products={} "
+        "changes={} cost≈¥{}",
+        summary.sources_ok, summary.baselines, summary.sources_blocked,
+        summary.sources_failed, summary.sources_skipped, summary.products_extracted,
+        summary.events_detected, summary.est_cost_cny,
     )
     return summary
 
@@ -206,8 +221,14 @@ def _process_url(
 
     # --- fetch failure / blocked ---------------------------------------
     if not cleaned.fetch.ok:
-        status = SnapshotStatus.BLOCKED if cleaned.fetch.blocked else SnapshotStatus.ERROR
-        summary.sources_failed += 1
+        if cleaned.fetch.blocked:
+            status = SnapshotStatus.BLOCKED
+            summary.sources_blocked += 1
+            logger.warning("BLOCKED (anti-bot) {} {}", source.name, url)
+        else:
+            status = SnapshotStatus.ERROR
+            summary.sources_failed += 1
+            logger.warning("FETCH ERROR {} {}: {}", source.name, url, cleaned.fetch.error)
         repo.add_snapshot(Snapshot(
             run_id=run_id, source_name=source.name, company=source.company, url=url,
             page_type=source.page_type.value, channel=source.channel,
@@ -270,7 +291,9 @@ def _process_url(
     # --- diff vs previous baseline -------------------------------------
     baseline = repo.last_ok_snapshot(source.name, before_id=snapshot.id)
     if baseline is None:
-        logger.info("baseline snapshot recorded (no diff): {} {}", source.name, url)
+        summary.baselines += 1
+        logger.info("baseline captured ({} products, no prior data to diff): {} {}",
+                    len(result.products), source.name, url)
         return
 
     previous = [record_to_extracted(r) for r in repo.products_for_snapshot(baseline.id)]

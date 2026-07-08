@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}系统状态{% endblock %}
+{% block content %}
+
+<div>
+  <h1 class="font-display-lg text-display-lg text-on-surface">设置 / 系统状态</h1>
+  <p class="text-body-lg text-on-surface-variant mt-sm">运行配置、连接状态与真实数据覆盖概览（配置在 <code>.env</code> / <code>config/</code> 中修改）。</p>
+</div>
+
+<!-- Connectivity + config -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+  <!-- LLM -->
+  <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+    <div class="flex items-center justify-between mb-md">
+      <div class="flex items-center gap-sm">
+        <span class="material-symbols-outlined text-secondary">smart_toy</span>
+        <h2 class="font-headline-md text-headline-md text-on-surface">LLM 模型</h2>
+      </div>
+      <span id="llm-status" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
+        <span class="material-symbols-outlined animate-spin" style="font-size:14px;">progress_activity</span>检测中…
+      </span>
+    </div>
+    <dl class="space-y-sm">
+      {% for k, v in [("服务商", status.llm.provider), ("API Key", "已配置" if status.llm.key_set else "未配置"),
+                      ("抽取模型", status.llm.extract_model), ("每日模型", status.llm.daily_model),
+                      ("周报模型", status.llm.weekly_model)] %}
+      <div class="flex items-center justify-between border-b border-outline-variant/20 pb-xs">
+        <dt class="font-body-md text-on-surface-variant">{{ k }}</dt>
+        <dd class="font-body-md text-on-surface tabular-nums">{{ v }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    <button onclick="checkLLM()" class="mt-md px-md py-2 rounded-lg border border-secondary text-primary font-label-md hover:bg-surface-container-high transition-colors">重新检测连接</button>
+  </div>
+
+  <!-- Search + schedule + agent -->
+  <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] space-y-md">
+    <div class="flex items-center gap-sm">
+      <span class="material-symbols-outlined text-secondary">tune</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface">检索 / 调度 / 智能体</h2>
+    </div>
+    <div class="flex items-center justify-between border-b border-outline-variant/20 pb-xs">
+      <span class="font-body-md text-on-surface-variant">联网检索</span>
+      {% if status.search.configured %}
+      <span class="px-2 py-0.5 rounded bg-success-container text-on-success-container font-label-sm text-label-sm">{{ status.search.provider }} 已配置</span>
+      {% else %}
+      <span class="px-2 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">未配置（发现/深挖受限）</span>
+      {% endif %}
+    </div>
+    {% for k, v in [("每日抓取", status.schedule.daily_cron), ("每周报告", status.schedule.weekly_cron),
+                    ("时区", status.schedule.tz), ("最近运行", status.last_run.when),
+                    ("智能体预算", "≤ " ~ status.agent.max_iterations ~ " 轮 / ¥" ~ status.agent.max_cost_cny),
+                    ("核查阈值", status.agent.verify_threshold)] %}
+    <div class="flex items-center justify-between border-b border-outline-variant/20 pb-xs">
+      <span class="font-body-md text-on-surface-variant">{{ k }}</span>
+      <span class="font-body-md text-on-surface tabular-nums">{{ v }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Data coverage -->
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+  <h2 class="font-headline-md text-headline-md text-on-surface mb-md">真实数据覆盖</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-md">
+    {% set cov = status.coverage %}
+    {% for label, value, sub in [
+        ("竞品在监产品", cov.products, cov.priced ~ " 款含价格（" ~ cov.priced_pct ~ "%）"),
+        ("竞争对手品牌", cov.brands, cov.focus_brands ~ " 个重点关注"),
+        ("集宝自有产品", cov.own_products, "对标基线"),
+        ("市场洞察", cov.insights, "系统计算") ] %}
+    <div class="bg-surface-container-low rounded-lg p-md">
+      <div class="font-display-lg text-display-lg text-on-surface tabular-nums leading-none">{{ value }}</div>
+      <div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mt-xs">{{ label }}</div>
+      <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{{ sub }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-md flex flex-wrap items-center gap-sm">
+    <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">来源渠道：</span>
+    {% for ch, n in cov.channels.items() %}
+    <span class="px-2 py-1 rounded bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">{{ ch }} · {{ n }}</span>
+    {% endfor %}
+  </div>
+  <p class="mt-md font-body-sm text-body-sm text-on-surface-variant">数据全部来自真实来源（分析报告 PPTX / 品牌官网 / 苏宁 / 集宝目录）。载入或刷新：<code>chubb-ci load-real</code>。</p>
+</section>
+
+<!-- Sources -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="px-lg py-md border-b border-outline-variant/30 flex items-center justify-between">
+    <h2 class="font-headline-md text-headline-md text-on-surface">监控源（{{ status.sources_enabled }}/{{ status.sources|length }} 启用）</h2>
+    <span class="font-body-sm text-body-sm text-on-surface-variant">在 <code>config/sources.yaml</code> 增删</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-sm">来源</th>
+          <th class="text-left px-lg py-sm">品牌</th>
+          <th class="text-left px-lg py-sm">渠道</th>
+          <th class="text-left px-lg py-sm">抓取器</th>
+          <th class="text-left px-lg py-sm">频率</th>
+          <th class="text-center px-lg py-sm">状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in status.sources %}
+        <tr class="border-b border-outline-variant/40">
+          <td class="px-lg py-sm text-on-surface font-medium">{{ s.name }}</td>
+          <td class="px-lg py-sm text-on-surface-variant">{{ s.company }}</td>
+          <td class="px-lg py-sm"><span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ s.channel }}</span></td>
+          <td class="px-lg py-sm text-on-surface-variant">{{ s.fetcher }}</td>
+          <td class="px-lg py-sm text-on-surface-variant">{{ s.frequency }}</td>
+          <td class="px-lg py-sm text-center">
+            {% if s.enabled %}<span class="px-2 py-0.5 rounded bg-success-container text-on-success-container font-label-sm text-label-sm">启用</span>
+            {% else %}<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">停用</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  async function checkLLM() {
+    const el = document.getElementById("llm-status");
+    el.className = "inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm";
+    el.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:14px;">progress_activity</span>检测中…';
+    try {
+      const j = await (await fetch("/api/status/llm")).json();
+      if (j.ok) {
+        el.className = "inline-flex items-center gap-1 px-2 py-1 rounded bg-success-container text-on-success-container font-label-sm text-label-sm";
+        el.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check_circle</span>' + j.message;
+      } else {
+        el.className = "inline-flex items-center gap-1 px-2 py-1 rounded bg-error-container text-on-error-container font-label-sm text-label-sm";
+        el.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">error</span>' + j.message;
+      }
+    } catch (e) {
+      el.className = "inline-flex items-center gap-1 px-2 py-1 rounded bg-error-container text-on-error-container font-label-sm text-label-sm";
+      el.textContent = "检测失败：" + e.message;
+    }
+  }
+  checkLLM();
+</script>
+{% endblock %}

@@ -83,8 +83,12 @@ def test_dashboard_service_view_models(settings):
         assert any(q["own"] for q in mm["quad"])
 
         ins = svc.insight_summary()
-        assert ins["total"] >= 1
-        assert ins["counts"]["logistics_advantage"] >= 1  # lead 0 vs seeded 3-15d
+        assert ins["total"] >= 1                 # pricing_anomaly / market_gap fire
+
+        lb = svc.value_leaderboard()
+        assert lb["rows"]
+        assert any(r["is_own"] for r in lb["rows"])   # 集宝 present in the leaderboard
+        assert lb["rows"] == sorted(lb["rows"], key=lambda r: r["avg_price"])
 
         profile = svc.brand_profile("永发 Yongfa")
         assert profile is not None
@@ -111,9 +115,17 @@ def test_pages_return_200(client):
     for path in ["/", "/reports", "/competitors", "/products",
                  "/benchmark", "/market-map", "/competitors/永发 Yongfa",
                  "/promotions", "/price-changes", "/market-trends", "/research-agent",
-                 "/health"]:
+                 "/settings", "/health"]:
         resp = client.get(path)
         assert resp.status_code == 200, path
+
+
+def test_settings_status(client):
+    st = client.get("/settings")
+    assert st.status_code == 200
+    assert "系统状态" in st.text
+    # data coverage + source table render
+    assert "真实数据覆盖" in st.text and "监控源" in st.text
 
 
 def test_focus_toggle_and_competitor_merge(client):

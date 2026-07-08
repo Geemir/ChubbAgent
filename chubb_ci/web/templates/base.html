@@ -117,9 +117,9 @@
     </ul>
   </div>
   <div class="px-xs pt-md border-t border-surface-variant/20">
-    <a href="#" class="flex items-center gap-md px-md py-sm mx-2 rounded-lg text-on-primary/70 hover:bg-primary-container hover:text-on-primary-container transition-colors">
-      <span class="material-symbols-outlined">settings</span>
-      <span class="font-label-md text-label-md">设置</span>
+    <a href="/settings" class="flex items-center gap-md px-md py-sm mx-2 rounded-lg transition-colors {% if active == 'settings' %}bg-secondary-container text-on-secondary-container{% else %}text-on-primary/70 hover:bg-primary-container hover:text-on-primary-container{% endif %}">
+      <span class="material-symbols-outlined"{% if active == 'settings' %} style="font-variation-settings:'FILL' 1;"{% endif %}>settings</span>
+      <span class="font-label-md text-label-md">设置 / 系统状态</span>
     </a>
   </div>
 </nav>

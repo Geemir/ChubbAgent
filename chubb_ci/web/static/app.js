@@ -403,6 +403,46 @@
   }
   window.__initMarketMap = initMarketMap;
 
+  // --- Value leaderboard: avg price by brand (集宝 highlighted) ---------
+  function initLeaderboard() {
+    const el = document.getElementById("avgPriceChart");
+    if (!el || !window.Chart || !window.__leaderboard) return;
+    const rows = window.__leaderboard.rows || [];
+    if (!rows.length) return;
+    new Chart(el, {
+      type: "bar",
+      data: {
+        labels: rows.map((r) => r.brand),
+        datasets: [{
+          label: "均价 (¥)",
+          data: rows.map((r) => r.avg_price),
+          backgroundColor: rows.map((r) => (r.is_own ? YELLOW : STEEL)),
+          borderColor: rows.map((r) => (r.is_own ? NAVY : STEEL)),
+          borderWidth: rows.map((r) => (r.is_own ? 2 : 0)),
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => {
+            const r = rows[ctx.dataIndex];
+            const sec = r.avg_sec != null ? ` · 防盗分 ${r.avg_sec}` : "";
+            return `均价 ¥${Number(r.avg_price).toLocaleString()}（${r.count} 款${sec}）`;
+          } } },
+        },
+        scales: {
+          x: { type: "logarithmic", beginAtZero: false,
+               ticks: { color: "#73777f", callback: (v) => "¥" + Number(v).toLocaleString() },
+               grid: { color: "rgba(195,198,208,0.25)" } },
+          y: { grid: { display: false }, ticks: { color: "#43474e", font: { size: 11 } } },
+        },
+      },
+    });
+  }
+  window.__initLeaderboard = initLeaderboard;
+
   document.addEventListener("DOMContentLoaded", function () {
     initTrendChart();
     initProductFilter();
