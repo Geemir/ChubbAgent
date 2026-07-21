@@ -38,6 +38,17 @@ class Source(BaseModel):
     frequency: str = "daily"
     urls: list[str] = Field(default_factory=list)
     selectors: dict[str, str] = Field(default_factory=dict)
+    #: Follow product links to detail pages for full specs (dims/weight/certs).
+    #: Only worthwhile where specs are in the detail DOM (JD/Tmall) — 苏宁 gates them.
+    enrich_details: bool = False
+    #: Spider the whole 官网 catalog: follow category/pagination/detail links from the
+    #: seed URL and extract EVERY product (not just the landing page). No price needed.
+    crawl_catalog: bool = False
+    #: Safety cap on pages fetched during a catalog spider (categories + detail pages).
+    catalog_max_pages: int = 60
+    #: Override the browser fetcher's post-load wait (ms) for this source. Some anti-bot
+    #: pages (ZOL) need ~9s for their JS challenge to resolve; 0 = use the default.
+    browser_wait_ms: int = 0
     notes: str = ""
 
     @field_validator("urls")

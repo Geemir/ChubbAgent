@@ -2,7 +2,7 @@
 
 The real implementations live in:
 - :mod:`chubb_ci.agent.research_flow` — LangGraph research & discovery graphs
-- :mod:`chubb_ci.agent.ingest_flow` / :mod:`chubb_ci.agent.scan_flow` — linear flows
+- :mod:`chubb_ci.agent.ingest_flow` — linear flows
 - :mod:`chubb_ci.agent.service` — run lifecycle + human review
 
 Use :func:`chubb_ci.agent.service.start_workflow` as the single entrypoint.

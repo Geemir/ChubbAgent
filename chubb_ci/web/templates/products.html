@@ -7,13 +7,18 @@
     <h1 class="font-display-lg text-display-lg text-on-surface">产品情报</h1>
     <p class="text-body-lg text-on-surface-variant mt-sm">监控竞争对手定价、品类与近期市场变动。</p>
   </div>
-  <a href="/api/export/products.csv" class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors self-start">
-    <span class="material-symbols-outlined" style="font-size:18px;">download</span>导出 CSV
-  </a>
+  <div class="flex items-center gap-sm self-start">
+    <a href="/ingest" class="flex items-center gap-sm px-md py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">
+      <span class="material-symbols-outlined" style="font-size:18px;">add</span>新增产品
+    </a>
+    <a href="/api/export/products.csv" class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors">
+      <span class="material-symbols-outlined" style="font-size:18px;">download</span>导出 CSV
+    </a>
+  </div>
 </div>
 
 <!-- Filters -->
-<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] grid grid-cols-1 md:grid-cols-4 gap-md">
   <div class="md:col-span-1">
     <label class="font-label-md text-label-md text-on-surface-variant">搜索</label>
     <div class="relative mt-xs">
@@ -35,6 +40,13 @@
       {% for c in companies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
     </select>
   </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">渠道</label>
+    <select id="filter-channel" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部渠道</option>
+      {% for c in channels %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
 </div>
 
 <!-- Table (click column headers to sort) -->
@@ -43,34 +55,41 @@
     <table class="w-full text-body-md" id="products-table">
       <thead>
         <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider select-none">
+          <th class="text-center px-sm py-md">图片</th>
           <th class="text-left px-md py-md sortable cursor-pointer hover:text-primary" data-key="name" data-type="str">产品名称 <span class="sort-ind"></span></th>
           <th class="text-left px-md py-md sortable cursor-pointer hover:text-primary" data-key="company" data-type="str">竞争对手 <span class="sort-ind"></span></th>
+          <th class="text-left px-md py-md">渠道</th>
           <th class="text-left px-md py-md">品类</th>
           <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="price" data-type="num">现价 <span class="sort-ind"></span></th>
           <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="diff" data-type="num">变化 <span class="sort-ind"></span></th>
           <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="cap" data-type="num">容积L <span class="sort-ind"></span></th>
-          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="fire" data-type="num">防火h <span class="sort-ind"></span></th>
-          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="sec" data-type="num">防盗分 <span class="sort-ind"></span></th>
           <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="ppl" data-type="num">元/升 <span class="sort-ind"></span></th>
           <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="ppk" data-type="num">元/公斤 <span class="sort-ind"></span></th>
-          <th class="text-right px-md py-md sortable cursor-pointer hover:text-primary" data-key="lead" data-type="num">交期天 <span class="sort-ind"></span></th>
-          <th class="text-left px-md py-md">促销</th>
           <th class="text-left px-md py-md">更新</th>
+          <th class="text-center px-md py-md sticky right-0 bg-surface-container-low shadow-[-6px_0_8px_-6px_rgba(18,58,99,0.15)]">操作</th>
         </tr>
       </thead>
       <tbody id="products-tbody">
         {% for r in rows %}
         <tr class="product-row border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors"
-            data-name="{{ r.product_name|lower }}" data-category="{{ r.category }}" data-company="{{ r.company }}"
+            data-id="{{ r.id }}" data-name="{{ r.product_name|lower }}" data-category="{{ r.category }}" data-company="{{ r.company }}" data-channel="{{ r.channel }}"
             data-price="{{ r.price if r.price is not none else '' }}" data-diff="{{ r.diff_pct if r.diff_pct is not none else '' }}"
             data-cap="{{ r.capacity_l if r.capacity_l is not none else '' }}" data-fire="{{ r.fire_hours if r.fire_hours is not none else '' }}"
             data-sec="{{ r.security_score if r.security_score is not none else '' }}" data-ppl="{{ r.price_per_l if r.price_per_l is not none else '' }}"
             data-ppk="{{ r.price_per_kg if r.price_per_kg is not none else '' }}" data-lead="{{ r.lead_time_days if r.lead_time_days is not none else '' }}">
+          <td class="px-sm py-sm text-center">
+            {% if r.image_url %}
+            <img loading="lazy" src="{% if r.image_url.startswith('http') %}/api/img?url={{ r.image_url|urlencode }}{% else %}{{ r.image_url }}{% endif %}"
+                 class="w-12 h-12 object-contain rounded bg-surface-container-low mx-auto"
+                 onerror="this.outerHTML='<span class=\'material-symbols-outlined text-outline\'>safe</span>'"/>
+            {% else %}<span class="material-symbols-outlined text-outline" style="font-size:22px;">safe</span>{% endif %}
+          </td>
           <td class="px-md py-md text-on-surface font-medium">
-            {{ r.product_name }}
+            <a href="/products/{{ r.id }}" class="hover:underline hover:text-primary">{{ r.product_name }}</a>
             {% if r.status_label %}<span class="ml-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">{{ r.status_label }}</span>{% endif %}
           </td>
           <td class="px-md py-md text-on-surface-variant">{{ r.company }}</td>
+          <td class="px-md py-md">{% if r.channel %}<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm whitespace-nowrap">{{ r.channel }}</span>{% else %}<span class="text-on-surface-variant/40">—</span>{% endif %}</td>
           <td class="px-md py-md"><span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.category }}</span></td>
           <td class="px-md py-md text-right tabular-nums text-on-surface font-medium" {% if r.prev_price is not none %}title="原价 ¥{{ '{:,.0f}'.format(r.prev_price) }}"{% endif %}>{% if r.price is not none %}¥{{ '{:,.0f}'.format(r.price) }}{% else %}—{% endif %}</td>
           <td class="px-md py-md text-right">
@@ -81,17 +100,20 @@
             {% else %}<span class="text-on-surface-variant">–</span>{% endif %}
           </td>
           <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.capacity_l if r.capacity_l is not none else "—" }}</td>
-          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.fire_hours if r.fire_hours is not none else "—" }}</td>
-          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.security_score if r.security_score is not none else "—" }}</td>
           <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.price_per_l if r.price_per_l is not none else "—" }}</td>
           <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.price_per_kg if r.price_per_kg is not none else "—" }}</td>
-          <td class="px-md py-md text-right tabular-nums text-on-surface-variant">{{ r.lead_time_days if r.lead_time_days is not none else "—" }}</td>
-          <td class="px-md py-md">
-            {% if r.promotion %}
-            <span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm">{{ r.promotion }}</span>
-            {% else %}<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">无</span>{% endif %}
-          </td>
           <td class="px-md py-md text-on-surface-variant font-body-sm text-body-sm whitespace-nowrap">{{ r.last_updated }}</td>
+          <td class="op-cell px-md py-md text-center whitespace-nowrap sticky right-0 bg-surface-container-lowest shadow-[-6px_0_8px_-6px_rgba(18,58,99,0.15)]">
+            <a href="/products/{{ r.id }}" class="p-1 text-on-surface-variant hover:text-primary transition-colors inline-block align-middle" title="详情">
+              <span class="material-symbols-outlined" style="font-size:18px;">visibility</span>
+            </a>
+            <button class="edit-product p-1 text-on-surface-variant hover:text-primary transition-colors align-middle" title="编辑" data-id="{{ r.id }}">
+              <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
+            </button>
+            <button class="delete-product p-1 text-on-surface-variant hover:text-error transition-colors align-middle" title="删除" data-id="{{ r.id }}" data-name="{{ r.product_name }}">
+              <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+            </button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -105,10 +127,179 @@
   {% endif %}
 </div>
 
+<!-- Edit-product modal -->
+<div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-lg py-md border-b border-outline-variant/40">
+      <h2 class="font-headline-md text-headline-md text-on-surface">编辑产品</h2>
+      <button id="edit-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="edit-form" class="grid grid-cols-2 gap-md p-lg" onsubmit="return false;">
+      <input type="hidden" name="id"/>
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">产品名称 *</label>
+        <input name="product_name" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">品牌 / 竞争对手</label>
+        <input name="company" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">品类</label>
+        <input name="category" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">价格 ¥</label>
+        <input name="price" type="number" step="0.01" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">促销</label>
+        <input name="promotion" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">宽 mm</label>
+        <input name="width_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">深 mm</label>
+        <input name="depth_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">高 mm</label>
+        <input name="height_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">重量 kg</label>
+        <input name="weight_kg" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">容积 L</label>
+        <input name="capacity_l" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">防火 h</label>
+        <input name="fire_hours" type="number" step="0.5" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">防盗分</label>
+        <input name="security_score" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">防盗等级（GB/欧标）</label>
+        <input name="gb_grade" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">商品链接</label>
+        <input name="product_url" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">图片（URL 或上传）</label>
+        <div class="flex items-center gap-md mt-xs">
+          <img id="edit-img-preview" class="w-14 h-14 object-contain rounded bg-surface-container-low hidden" alt=""/>
+          <input name="image_url" class="flex-1 px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary" placeholder="https://… 或点右侧上传"/>
+          <label class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors cursor-pointer">
+            <span class="material-symbols-outlined" style="font-size:18px;">upload</span>上传
+            <input id="edit-img-file" type="file" accept="image/*" class="hidden"/>
+          </label>
+        </div>
+      </div>
+      <div class="col-span-2 flex items-center gap-md mt-sm">
+        <button id="edit-save" class="flex items-center gap-sm px-lg py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined" style="font-size:18px;">save</span>保存
+        </button>
+        <span id="edit-status" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}
 {% block scripts %}
+<script id="product-rows" type="application/json">{{ rows|tojson }}</script>
 <script>
   window.__initProductFilter && window.__initProductFilter();
   window.__initProductSort && window.__initProductSort();
+
+  (function () {
+    const rows = JSON.parse(document.getElementById('product-rows').textContent);
+    const byId = Object.fromEntries(rows.map(r => [String(r.id), r]));
+    const modal = document.getElementById('edit-modal');
+    const form = document.getElementById('edit-form');
+    const F = (n) => form.elements[n];
+    const FIELDS = ['product_name','company','category','price','promotion','width_mm','depth_mm',
+                    'height_mm','weight_kg','capacity_l','fire_hours','security_score','gb_grade',
+                    'product_url','image_url'];
+
+    function syncPreview() {
+      const url = (F('image_url').value || '').trim();
+      const img = document.getElementById('edit-img-preview');
+      if (url) { img.src = url.startsWith('http') ? '/api/img?url=' + encodeURIComponent(url) : url;
+                 img.classList.remove('hidden'); }
+      else img.classList.add('hidden');
+    }
+    F('image_url').addEventListener('change', syncPreview);
+
+    function openModal(id) {
+      const r = byId[id];
+      if (!r) return;
+      F('id').value = id;
+      FIELDS.forEach(k => { if (F(k)) F(k).value = r[k] ?? ''; });
+      // 品类 "—" placeholder shouldn't round-trip into the record
+      if (F('category').value === '—') F('category').value = '';
+      document.getElementById('edit-status').textContent = '';
+      syncPreview();
+      modal.classList.remove('hidden');
+    }
+    function closeModal() { modal.classList.add('hidden'); }
+    document.getElementById('edit-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    document.querySelectorAll('.edit-product').forEach(b =>
+      b.addEventListener('click', (e) => { e.stopPropagation(); openModal(b.dataset.id); }));
+
+    document.querySelectorAll('.delete-product').forEach(b =>
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`确认删除「${b.dataset.name}」？将删除该产品的全部历史记录。`)) return;
+        const res = await fetch('/api/products/' + b.dataset.id, { method: 'DELETE' });
+        if (res.ok) { b.closest('tr').remove(); }
+        else { const j = await res.json().catch(() => ({})); alert('删除失败：' + (j.error || res.status)); }
+      }));
+
+    document.getElementById('edit-img-file').addEventListener('change', (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const res = await fetch('/api/upload', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: reader.result, filename: file.name }) });
+        const json = await res.json();
+        if (!res.ok) { alert('上传失败：' + (json.error || res.status)); return; }
+        F('image_url').value = json.url;
+        syncPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('edit-save').addEventListener('click', async () => {
+      const status = document.getElementById('edit-status');
+      const body = {};
+      FIELDS.forEach(k => { if (F(k)) body[k] = F(k).value.trim(); });
+      if (!body.product_name) { status.textContent = '产品名称必填'; return; }
+      status.textContent = '保存中…';
+      const res = await fetch('/api/products/' + F('id').value, { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { status.textContent = '已保存，刷新中…'; setTimeout(() => location.reload(), 500); }
+      else { const j = await res.json().catch(() => ({})); status.textContent = '保存失败：' + (j.error || res.status); }
+    });
+
+    // Product-detail "编辑" links back here with #edit-<id>.
+    const hashMatch = location.hash.match(/^#edit-(\d+)$/);
+    if (hashMatch) {
+      openModal(hashMatch[1]);
+      history.replaceState(null, '', '/products');
+    }
+  })();
 </script>
 {% endblock %}

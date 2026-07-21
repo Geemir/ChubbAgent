@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}市场情况{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">市场情况</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">市场地图 · 价格变动 · 市场趋势，一页总览。</p>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="flex gap-sm border-b border-outline-variant/60">
+  {% set tabs = [("map","scatter_plot","市场地图"),("price","payments","价格变动"),("trends","trending_up","市场趋势")] %}
+  {% for key, icon, label in tabs %}
+  <button data-tab="{{ key }}"
+          class="market-tab flex items-center gap-sm px-md py-sm font-label-md text-label-md rounded-t-lg border-b-2 transition-colors
+                 {% if loop.first %}border-primary text-primary bg-surface-container-lowest{% else %}border-transparent text-on-surface-variant hover:text-primary{% endif %}">
+    <span class="material-symbols-outlined" style="font-size:18px;">{{ icon }}</span>{{ label }}
+  </button>
+  {% endfor %}
+</div>
+
+<!-- ============================== TAB: 市场地图 ============================== -->
+<div id="tab-map" class="market-panel space-y-lg">
+{% if map.own_count == 0 and not map.scatter %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <span class="material-symbols-outlined text-outline" style="font-size:48px;">scatter_plot</span>
+  <p class="text-on-surface-variant text-body-lg mt-md">暂无带价格与容量的数据。运行 <code>chubb-ci load-real</code> 或导入目录后查看。</p>
+</div>
+{% else %}
+
+<section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+  <div class="flex items-center justify-between mb-md">
+    <h2 class="font-headline-md text-headline-md text-on-surface">容量 × 价格 散点图</h2>
+    <span class="font-body-sm text-body-sm text-on-surface-variant">X = 容积 (L) ｜ Y = 零售价 (¥, 对数轴)</span>
+  </div>
+  <div class="flex-1 min-h-[420px]"><canvas id="capacityScatter"></canvas></div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="p-lg pb-md flex items-center justify-between">
+    <h2 class="font-headline-md text-headline-md text-on-surface">容量段价格带矩阵</h2>
+    <span class="font-body-sm text-body-sm text-on-surface-variant">竞品在售 &lt; 3 款的容量段标记为市场空档</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-md">容量段</th>
+          <th class="text-right px-lg py-md">竞品数量</th>
+          <th class="text-right px-lg py-md">竞品均价</th>
+          <th class="text-right px-lg py-md">竞品最低</th>
+          <th class="text-right px-lg py-md">竞品最高</th>
+          <th class="text-right px-lg py-md">我司数量</th>
+          <th class="text-right px-lg py-md">我司均价</th>
+          <th class="text-right px-lg py-md">溢价</th>
+          <th class="text-left px-lg py-md">信号</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in map.bands %}
+        <tr class="border-b border-outline-variant/40 {% if b.is_gap %}bg-tertiary-fixed/20{% endif %} hover:bg-secondary-fixed/40 transition-colors">
+          <td class="px-lg py-sm text-on-surface font-medium">{{ b.label }}</td>
+          <td class="px-lg py-sm text-right tabular-nums {% if b.is_gap %}text-tertiary-fixed-dim font-semibold{% else %}text-on-surface{% endif %}">{{ b.comp_count }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface">{% if b.comp_avg %}¥{{ '{:,.0f}'.format(b.comp_avg) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{% if b.comp_min %}¥{{ '{:,.0f}'.format(b.comp_min) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant">{% if b.comp_max %}¥{{ '{:,.0f}'.format(b.comp_max) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface">{{ b.own_count }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface font-medium">{% if b.own_avg %}¥{{ '{:,.0f}'.format(b.own_avg) }}{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm text-right tabular-nums">{% if b.premium_pct is not none %}<span class="{% if b.premium_pct > 0 %}text-secondary{% else %}text-error{% endif %}">{{ '%+.1f'|format(b.premium_pct) }}%</span>{% else %}—{% endif %}</td>
+          <td class="px-lg py-sm">
+            {% if b.is_gap %}<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm"><span class="material-symbols-outlined" style="font-size:14px;">lightbulb</span>市场空档</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <div class="flex items-center justify-between mb-md">
+      <h2 class="font-headline-md text-headline-md text-on-surface">品牌四象限矩阵</h2>
+      <span class="font-body-sm text-body-sm text-on-surface-variant">X = 品牌均价 (¥, 对数轴) ｜ Y = 防盗等级分均值 ｜ 气泡 = 在售数量</span>
+    </div>
+    <div class="flex-1 min-h-[360px]"><canvas id="quadChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">象限解读</h2>
+    <ul class="space-y-md font-body-md text-on-surface-variant">
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-secondary" style="font-size:20px;">north_east</span>右上：高价格 + 高防护 — 集宝的目标象限（硬核认证支撑溢价）。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">south_east</span>右下：高价格 + 低防护 — 设计/生活方式品牌（Agresti 型），以美学而非认证溢价。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">north_west</span>左上：低价格 + 高防护 — 性价比威胁区，需用服务与品牌资产防守。</li>
+      <li class="flex gap-sm"><span class="material-symbols-outlined text-outline" style="font-size:20px;">south_west</span>左下：低价格 + 低防护 — 入门走量市场（国货主力段）。</li>
+    </ul>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">各品牌均价（集宝黄色高亮）</h2>
+    <div class="flex-1 min-h-[320px]"><canvas id="avgPriceChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+    <div class="px-lg py-md border-b border-outline-variant/30">
+      <h2 class="font-headline-md text-headline-md text-on-surface">价值对比榜</h2>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">按均价排序；元/升、元/公斤仅在有尺寸/重量数据时计算（谈判用性价比论据）。</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-body-md">
+        <thead>
+          <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+            <th class="text-left px-md py-sm">品牌</th>
+            <th class="text-right px-md py-sm">在售</th>
+            <th class="text-right px-md py-sm">均价</th>
+            <th class="text-right px-md py-sm">价格区间</th>
+            <th class="text-right px-md py-sm">元/升</th>
+            <th class="text-right px-md py-sm">防盗分</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in leaderboard.rows %}
+          <tr class="border-b border-outline-variant/40 {% if r.is_own %}bg-tertiary-fixed/20{% endif %} hover:bg-secondary-fixed/40 transition-colors">
+            <td class="px-md py-sm font-medium {% if r.is_own %}text-primary{% else %}text-on-surface{% endif %}">
+              {% if r.is_own %}<span class="material-symbols-outlined align-middle" style="font-size:16px;font-variation-settings:'FILL' 1;color:#c89c15">star</span> {% endif %}{{ r.brand }}
+            </td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant">{{ r.count }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface font-medium">¥{{ '{:,.0f}'.format(r.avg_price) }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant font-body-sm text-body-sm">¥{{ '{:,.0f}'.format(r.min_price) }}–{{ '{:,.0f}'.format(r.max_price) }}</td>
+            <td class="px-md py-sm text-right tabular-nums text-on-surface-variant">{{ r.avg_ppl if r.avg_ppl is not none else "—" }}</td>
+            <td class="px-md py-sm text-right tabular-nums {% if r.avg_sec %}text-on-surface{% else %}text-on-surface-variant{% endif %}">{{ r.avg_sec if r.avg_sec is not none else "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+</div>
+
+<!-- ============================== TAB: 价格变动 ============================== -->
+<div id="tab-price" class="market-panel hidden space-y-lg">
+<section class="grid grid-cols-2 md:grid-cols-4 gap-md">
+  {% set stat_cards = [
+    ("变动总数", pc.stats.total, "swap_vert", "text-on-surface"),
+    ("降价", pc.stats.downs, "trending_down", "text-error"),
+    ("涨价", pc.stats.ups, "trending_up", "text-secondary"),
+    ("平均变动", (pc.stats.avg_pct|string) ~ "%", "percent", "text-tertiary-fixed-dim")
+  ] %}
+  {% for label, value, icon, color in stat_cards %}
+  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col justify-between h-28">
+    <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">{{ label }}</span>
+    <div class="flex items-end justify-between mt-auto">
+      <span class="font-display-lg text-display-lg font-semibold tabular-nums {{ color }}">{{ value }}</span>
+      <span class="material-symbols-outlined text-outline">{{ icon }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] grid grid-cols-1 md:grid-cols-3 gap-md">
+  <div class="md:col-span-1">
+    <label class="font-label-md text-label-md text-on-surface-variant">搜索</label>
+    <div class="relative mt-xs">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size:18px;">search</span>
+      <input id="pc-name" class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-secondary-fixed-dim" placeholder="按产品名称筛选…" type="text"/>
+    </div>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">竞争对手</label>
+    <select id="pc-company" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部竞争对手</option>
+      {% for c in pc.companies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="font-label-md text-label-md text-on-surface-variant">方向</label>
+    <select id="pc-dir" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary">
+      <option value="">全部</option>
+      <option value="down">降价</option>
+      <option value="up">涨价</option>
+    </select>
+  </div>
+</div>
+
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-left px-lg py-md">日期</th>
+          <th class="text-left px-lg py-md">竞争对手</th>
+          <th class="text-left px-lg py-md">产品</th>
+          <th class="text-left px-lg py-md">渠道</th>
+          <th class="text-right px-lg py-md">原价</th>
+          <th class="text-right px-lg py-md">现价</th>
+          <th class="text-right px-lg py-md">变化</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pc.rows %}
+        <tr class="pc-row border-b border-outline-variant/40 hover:bg-secondary-fixed/40 transition-colors"
+            data-name="{{ r.product_name|lower }}" data-company="{{ r.company }}"
+            data-dir="{{ 'down' if (r.pct_change is not none and r.pct_change < 0) else 'up' }}">
+          <td class="px-lg py-sm text-on-surface-variant font-body-sm text-body-sm tabular-nums">{{ r.date }}</td>
+          <td class="px-lg py-sm text-on-surface">{{ r.company }}</td>
+          <td class="px-lg py-sm text-on-surface font-medium">{{ r.product_name }}</td>
+          <td class="px-lg py-sm"><span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.channel or '官网' }}</span></td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface-variant line-through">¥{{ r.old_value }}</td>
+          <td class="px-lg py-sm text-right tabular-nums text-on-surface font-medium">¥{{ r.new_value }}</td>
+          <td class="px-lg py-sm text-right">
+            {% if r.pct_change is not none %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-md tabular-nums {% if r.pct_change < 0 %}bg-error-container text-on-error-container{% else %}bg-secondary-container text-on-secondary-container{% endif %}">
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ 'south' if r.pct_change < 0 else 'north' }}</span>{{ '%.1f'|format(r.pct_change|abs) }}%
+            </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-lg py-md">
+    <span id="pc-count" class="font-body-sm text-body-sm text-on-surface-variant">共 {{ pc.rows|length }} 条记录</span>
+  </div>
+  {% if not pc.rows %}<p class="px-lg pb-lg text-on-surface-variant text-body-md">近 90 天暂无价格变动记录。</p>{% endif %}
+</div>
+</div>
+
+<!-- ============================== TAB: 市场趋势 ============================== -->
+<div id="tab-trends" class="market-panel hidden space-y-lg">
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">每日价格调整（涨价 / 降价）</h2>
+    <div class="flex-1 min-h-[300px]"><canvas id="priceDirChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">变化类型分布</h2>
+    <div class="flex-1 min-h-[300px] flex items-center justify-center"><canvas id="eventTypeChart"></canvas></div>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <div class="lg:col-span-7 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">各竞争对手活跃度</h2>
+    <div class="flex-1 min-h-[300px]"><canvas id="competitorChart"></canvas></div>
+  </div>
+  <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">在监产品品类分布</h2>
+    <div class="flex-1 min-h-[300px] flex items-center justify-center"><canvas id="categoryChart"></canvas></div>
+  </div>
+</section>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script id="map-data" type="application/json">{{ map|tojson }}</script>
+<script id="lb-data" type="application/json">{{ leaderboard|tojson }}</script>
+<script id="trends-data" type="application/json">{{ trends|tojson }}</script>
+<script>
+  window.__marketMap = JSON.parse(document.getElementById('map-data').textContent);
+  window.__leaderboard = JSON.parse(document.getElementById('lb-data').textContent);
+  window.__trends = JSON.parse(document.getElementById('trends-data').textContent);
+
+  // Tabbed panels: charts must init only once their panel is visible (Chart.js
+  // renders 0×0 inside display:none), so each tab lazily initializes on first show.
+  (function () {
+    const inits = {
+      map:    () => { window.__initMarketMap && window.__initMarketMap();
+                      window.__initLeaderboard && window.__initLeaderboard(); },
+      price:  () => { window.__initPriceChangeFilter && window.__initPriceChangeFilter(); },
+      trends: () => { window.__initTrendsCharts && window.__initTrendsCharts(); },
+    };
+    const done = {};
+    function show(key) {
+      document.querySelectorAll('.market-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tab-' + key).classList.remove('hidden');
+      document.querySelectorAll('.market-tab').forEach(b => {
+        const on = b.dataset.tab === key;
+        b.classList.toggle('border-primary', on);
+        b.classList.toggle('text-primary', on);
+        b.classList.toggle('bg-surface-container-lowest', on);
+        b.classList.toggle('border-transparent', !on);
+        b.classList.toggle('text-on-surface-variant', !on);
+      });
+      if (!done[key]) { done[key] = true; inits[key](); }
+      history.replaceState(null, '', '#' + key);
+    }
+    document.querySelectorAll('.market-tab').forEach(b =>
+      b.addEventListener('click', () => show(b.dataset.tab)));
+    const initial = (location.hash || '#map').slice(1);
+    show(inits[initial] ? initial : 'map');
+  })();
+</script>
+{% endblock %}

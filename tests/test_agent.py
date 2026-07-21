@@ -9,7 +9,7 @@ import pytest
 from sqlmodel import select
 
 from chubb_ci.agent.service import review_fact, start_workflow
-from chubb_ci.agent.state import SourcedFact
+from chubb_ci.agent.state import SearchHit, SourcedFact
 from chubb_ci.agent.verify import BASE_LLM, BASE_STRUCTURED, verify_facts
 from chubb_ci.demo_seed import seed
 from chubb_ci.llm.fake import FakeLLM
@@ -77,16 +77,11 @@ def _steps(settings, run_id):
             select(AgentStepRecord).where(AgentStepRecord.run_id == run_id)).all()]
 
 
-def test_scan_workflow(settings):
-    seed(settings, reset=True)
-    llm = FakeLLM(responses=["- 现货优势文案示例（依据：事实1）"])
-    run_id = start_workflow(settings, "scan", {}, background=False, llm=llm)
-    with session_scope(settings) as s:
-        run = s.get(AgentRun, run_id)
-        assert run.status == "done"
-        assert "渠道推广文案" in run.result_md
-        assert "依据事实" in run.result_md
-    assert "规划" in _steps(settings, run_id)
+def test_unknown_workflow_rejected(settings):
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError):
+        start_workflow(settings, "scan", {}, background=False, llm=FakeLLM())
 
 
 @pytest.mark.skipif(not DECK.exists(), reason="deck not present")
@@ -136,14 +131,94 @@ def test_research_workflow_local_url(settings):
         assert expected in nodes
 
 
-def test_discover_without_search_degrades(settings):
+def test_enrich_workflow_fills_only_verified_missing_fields(settings):
+    """Two independent source URLs corroborate numeric specs; existing data is preserved."""
     seed(settings, reset=True)
-    run_id = start_workflow(settings, "discover", {"goal": "测试"},
+    products_json = json.dumps({"products": [
+        {"product_name": "测试竞品 X1", "capacity_l": 60, "weight_kg": 52,
+         "width_mm": 400, "depth_mm": 350, "height_mm": 500,
+         "category": "不应覆盖已有品类", "key_features": ["电子锁"]},
+    ]}, ensure_ascii=False)
+    llm = FakeLLM(handler=lambda sys, user, jm: products_json)
+    with session_scope(settings) as s:
+        rec = ProductRecord(
+            company="测试品牌", product_name="测试竞品 X1", product_key="测试竞品x1",
+            category="保险柜", fire_hours=1.5, security_score=2,
+            product_url=(FIXTURES / "competitor_v1.html").as_posix(),
+            source_url=(FIXTURES / "competitor_v2.html").as_posix(),
+        )
+        s.add(rec)
+        s.commit()
+        s.refresh(rec)
+        product_id = rec.id
+
+    run_id = start_workflow(settings, "enrich", {"product_id": product_id},
+                            background=False, llm=llm)
+    with session_scope(settings) as s:
+        run = s.get(AgentRun, run_id)
+        rec = s.get(ProductRecord, product_id)
+        assert run.status == "done", run.error
+        assert run.facts_verified >= 5
+        assert rec.capacity_l == 60
+        assert rec.weight_kg == 52
+        assert rec.width_mm == 400 and rec.depth_mm == 350 and rec.height_mm == 500
+        assert rec.category == "保险柜"  # enrichment never overwrites non-empty values
+        assert rec.fire_hours == 1.5 and rec.security_score == 2
+        facts = s.exec(select(PendingFact).where(PendingFact.run_id == run_id)).all()
+        assert any(f.status == "applied" for f in facts)
+        assert any(f.field == "key_features" and f.status == "pending" for f in facts)
+
+    nodes = _steps(settings, run_id)
+    for expected in ("规划", "抓取", "抽取", "核查", "应用"):
+        assert expected in nodes
+
+
+class _FakeSearch:
+    """Injectable web-search stub for sentiment tests (no network)."""
+
+    available = True
+
+    def __init__(self, hits):
+        self._hits = hits
+
+    def search(self, query, *, top_k=10):
+        return list(self._hits)[:top_k]
+
+
+def test_sentiment_without_search_degrades(settings):
+    seed(settings, reset=True)
+    run_id = start_workflow(settings, "sentiment", {"goal": "集宝"},
                             background=False, llm=FakeLLM())
     with session_scope(settings) as s:
         run = s.get(AgentRun, run_id)
         assert run.status == "done"
         assert "未配置联网搜索" in run.result_md
+
+
+def test_sentiment_classifies_and_reports(settings):
+    seed(settings, reset=True)
+    hits = [SearchHit(title="集宝保险柜好用吗", url="https://a.example/1",
+                      snippet="做工扎实，认证齐全，值得买"),
+            SearchHit(title="集宝售后吐槽", url="https://b.example/2",
+                      snippet="客服响应慢，物流一般")]
+    # 1st LLM call = classification JSON; 2nd = the prose report.
+    classify = json.dumps({"items": [
+        {"idx": 0, "sentiment": "正面", "theme": "品质", "point": "做工扎实"},
+        {"idx": 1, "sentiment": "负面", "theme": "售后", "point": "客服慢"},
+    ]}, ensure_ascii=False)
+    llm = FakeLLM(responses=[classify, "## 舆情概览\n正面为主，售后需改进。[1]"])
+    run_id = start_workflow(settings, "sentiment", {"goal": "集宝 ChubbSafes"},
+                            background=False, llm=llm, search=_FakeSearch(hits))
+    with session_scope(settings) as s:
+        run = s.get(AgentRun, run_id)
+        assert run.status == "done", run.error
+        assert "舆情分析报告" in run.result_md
+        # deterministic tally traces to the two classified sources
+        assert "正面 1" in run.result_md and "负面 1" in run.result_md
+        assert "https://a.example/1" in run.result_md  # sources cited
+    nodes = _steps(settings, run_id)
+    for expected in ("规划", "搜索", "分析", "汇总"):
+        assert expected in nodes
 
 
 # =========================================================================

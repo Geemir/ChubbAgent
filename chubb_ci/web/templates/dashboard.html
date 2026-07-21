@@ -19,7 +19,7 @@
     ("竞争对手", kpis.competitors_monitored, "analytics", false),
     ("在监产品", kpis.products_tracked, "inventory_2", false),
     ("今日变化", "+" ~ kpis.changes_today, "bolt", true),
-    ("进行中促销", kpis.active_promotions, "campaign", false),
+    ("数据渠道", kpis.channels_covered, "hub", false),
     ("新发现竞品", kpis.newly_discovered, "person_search", true)
   ] %}
   {% for label, value, icon, accent in kpi_cards %}
@@ -45,7 +45,7 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
     {% set insight_cards = [
       ("定价异常", insights.counts.pricing_anomaly, "price_change", "对标价差超 ±5%", "/benchmark"),
-      ("市场空档", insights.counts.market_gap, "grid_view", "竞品 <3 款的容量段", "/market-map"),
+      ("市场空档", insights.counts.market_gap, "grid_view", "竞品 <3 款的容量段", "/market#map"),
       ("物流优势", insights.counts.logistics_advantage, "local_shipping", "现货交付快于竞品", "/benchmark")
     ] %}
     {% for label, count, icon, hint, href in insight_cards %}

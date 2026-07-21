@@ -58,6 +58,7 @@
     const nameEl = document.getElementById("filter-name");
     const catEl = document.getElementById("filter-category");
     const compEl = document.getElementById("filter-company");
+    const chanEl = document.getElementById("filter-channel");
     const countEl = document.getElementById("results-count");
     if (!nameEl) return;
     const rows = Array.from(document.querySelectorAll(".product-row"));
@@ -66,18 +67,20 @@
       const q = nameEl.value.trim().toLowerCase();
       const cat = catEl.value;
       const comp = compEl.value;
+      const chan = chanEl ? chanEl.value : "";
       let shown = 0;
       rows.forEach((r) => {
         const ok =
           (!q || r.dataset.name.includes(q)) &&
           (!cat || r.dataset.category === cat) &&
-          (!comp || r.dataset.company === comp);
+          (!comp || r.dataset.company === comp) &&
+          (!chan || r.dataset.channel === chan);
         r.style.display = ok ? "" : "none";
         if (ok) shown++;
       });
       if (countEl) countEl.textContent = "共 " + shown + " 条结果";
     }
-    [nameEl, catEl, compEl].forEach((el) => {
+    [nameEl, catEl, compEl, chanEl].filter(Boolean).forEach((el) => {
       el.addEventListener("input", apply);
       el.addEventListener("change", apply);
     });
@@ -451,5 +454,158 @@
     initRunCrawl();
     initGlobalSearch();
     initNotifications();
+  });
+})();
+
+// ======================================================================
+// Research-agent console — shared across the hub + every feature sub-page.
+// Auto-initializes wherever an #agent-console element is present.
+// ======================================================================
+(function () {
+  const WF = {ingest: "文档摄取", research: "品牌深挖",
+              enrich: "竞品信息自动化搜集", sentiment: "舆情分析"};
+  const NODE_COLOR = {核查: "#f0c03e", 应用: "#a1d1fe"};
+  let currentRun = null, pollTimer = null, stream = null, wfFilter = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  window.agentStart = async function (params) {
+    try {
+      const res = await fetch("/api/agent/start", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(params),
+      });
+      const json = await res.json();
+      if (json.error) { alert(json.error); return; }
+      selectRun(json.run_id);
+      loadRuns();
+    } catch (e) { alert("启动失败：" + e.message); }
+  };
+
+  window.loadRuns = async function () {
+    const list = $("run-list");
+    if (!list) return;
+    const json = await (await fetch("/api/agent/runs")).json();
+    let runs = json.runs || [];
+    if (wfFilter) runs = runs.filter((r) => r.workflow === wfFilter);
+    if (!runs.length) {
+      list.innerHTML = '<p class="px-lg py-md text-body-sm" style="color:#73777f">暂无运行记录。</p>';
+      return;
+    }
+    const stColor = {running: "#c89c15", done: "#1b5e20", failed: "#93000a"};
+    list.innerHTML = runs.map((r) =>
+      `<div onclick="selectRun(${r.id})" class="px-lg py-sm cursor-pointer hover:bg-[#f3f4f5] ${currentRun === r.id ? "bg-[#e7f0fa]" : ""}">
+         <div class="flex items-center justify-between">
+           <span class="text-sm font-medium" style="color:#191c1d">#${r.id} ${WF[r.workflow] || r.workflow}</span>
+           <span class="text-xs font-semibold" style="color:${stColor[r.status] || "#43474e"}">${r.status}</span>
+         </div>
+         <div class="text-xs mt-0.5 truncate" style="color:#73777f">${r.goal} · ¥${r.cost_cny}${r.facts_pending ? " · 待审 " + r.facts_pending : ""}</div>
+       </div>`).join("");
+  };
+
+  function stepLine(s) {
+    return `<div><span style="color:rgba(240,241,242,.45)">${s.ts}</span> <span style="color:${NODE_COLOR[s.node] || "#9ccbf8"}">[${s.node}]</span> <span style="color:#f0f1f2">${s.message}</span>${s.detail ? ` <span style="color:rgba(240,241,242,.4)">— ${s.detail}</span>` : ""}</div>`;
+  }
+  function setStatusChip(status) {
+    const st = $("run-status");
+    if (!st) return;
+    st.textContent = `#${currentRun} · ${status}` + (stream ? " · SSE" : "");
+    st.style.background = status === "running" ? "#ffdf95" : (status === "done" ? "#c8e6c9" : "#ffdad6");
+  }
+  function setMeta(run) {
+    const m = $("run-meta");
+    if (m) m.textContent = `迭代 ${run.iterations} · tokens ${run.tokens_in}/${run.tokens_out} · 成本 ≈¥${run.cost_cny}` + (run.error ? ` · 错误：${run.error}` : "");
+  }
+
+  window.selectRun = function (id) {
+    currentRun = id;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (stream) { stream.close(); stream = null; }
+    poll().then((run) => { if (run && run.status === "running") openStream(id); });
+  };
+
+  function openStream(id) {
+    const log = $("agent-log");
+    if (!window.EventSource || !log) { pollTimer = setInterval(poll, 2000); return; }
+    stream = new EventSource(`/api/agent/runs/${id}/stream`);
+    stream.addEventListener("step", (e) => {
+      if (log.firstChild && log.firstChild.dataset && log.firstChild.dataset.placeholder) log.innerHTML = "";
+      log.insertAdjacentHTML("beforeend", stepLine(JSON.parse(e.data)));
+      log.scrollTop = log.scrollHeight;
+    });
+    stream.addEventListener("status", (e) => { const r = JSON.parse(e.data); setStatusChip(r.status); setMeta(r); });
+    stream.addEventListener("done", () => { stream.close(); stream = null; poll(); loadRuns(); });
+    stream.onerror = () => { if (stream) { stream.close(); stream = null; } if (!pollTimer) pollTimer = setInterval(poll, 2000); };
+    setStatusChip("running");
+  }
+
+  async function poll() {
+    if (!currentRun) return null;
+    const json = await (await fetch("/api/agent/runs/" + currentRun)).json();
+    if (json.error) return null;
+    const run = json.run;
+    setStatusChip(run.status);
+    const log = $("agent-log");
+    if (log) {
+      log.innerHTML = json.steps.map(stepLine).join("")
+        || '<div data-placeholder="1" style="color:rgba(240,241,242,.5)">等待第一条日志…</div>';
+      log.scrollTop = log.scrollHeight;
+    }
+    setMeta(run);
+    const resultCard = $("result-card");
+    if (resultCard) {
+      if (run.result_md) {
+        resultCard.classList.remove("hidden");
+        $("agent-result").innerHTML = window.marked ? marked.parse(run.result_md) : run.result_md;
+      } else resultCard.classList.add("hidden");
+    }
+    const factsCard = $("facts-card");
+    if (factsCard) {
+      if (json.facts.length) {
+        factsCard.classList.remove("hidden");
+        const stChip = {pending: ["待确认", "#ffdf95", "#251a00"], verified: ["自动通过", "#c8e6c9", "#1b5e20"],
+                        applied: ["已采纳", "#cde5ff", "#104a71"], rejected: ["已驳回", "#ffdad6", "#93000a"]};
+        $("facts-list").innerHTML = json.facts.map((f) => {
+          const [label, bg, fg] = stChip[f.status] || [f.status, "#edeeef", "#43474e"];
+          const srcs = (f.sources || []).map((s) => s.startsWith("http")
+            ? `<a href="${s}" target="_blank" class="underline">${s.slice(0, 60)}</a>` : s).join("、");
+          const actions = f.status === "pending"
+            ? `<div class="flex gap-2 mt-1">
+                 <button onclick="reviewFact(${f.id}, true)" class="px-2 py-1 rounded text-xs font-semibold" style="background:#123a63;color:#fff">采纳</button>
+                 <button onclick="reviewFact(${f.id}, false)" class="px-2 py-1 rounded text-xs font-semibold" style="background:#ffdad6;color:#93000a">驳回</button>
+               </div>` : (f.review_note ? `<div class="text-xs mt-1" style="color:#73777f">${f.review_note}</div>` : "");
+          return `<div class="px-lg py-sm">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="text-sm" style="color:#191c1d">${f.claim}</div>
+                      <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold whitespace-nowrap" style="background:${bg};color:${fg}">${label}</span>
+                    </div>
+                    <div class="text-xs mt-0.5" style="color:#73777f">置信 ${f.confidence} · 来源：${srcs || "—"}</div>
+                    ${actions}
+                  </div>`;
+        }).join("");
+      } else factsCard.classList.add("hidden");
+    }
+    if (run.status !== "running" && pollTimer) { clearInterval(pollTimer); pollTimer = null; loadRuns(); }
+    return run;
+  }
+
+  window.reviewFact = async function (id, accept) {
+    const note = accept ? "" : (prompt("驳回原因（可选）：") || "");
+    const res = await fetch(`/api/agent/facts/${id}/review`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({accept, note}),
+    });
+    const json = await res.json();
+    if (json.error) alert(json.error);
+    poll();
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const console_ = $("agent-console");
+    if (!console_) return;
+    wfFilter = console_.dataset.workflow || null;
+    loadRuns();
+    const wanted = parseInt(new URLSearchParams(location.search).get("run"), 10);
+    if (wanted) selectRun(wanted);
   });
 })();

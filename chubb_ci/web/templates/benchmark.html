@@ -5,111 +5,194 @@
 <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
   <div>
     <h1 class="font-display-lg text-display-lg text-on-surface">对标分析</h1>
-    <p class="text-body-lg text-on-surface-variant mt-sm">我司产品与竞品功能对标：价格差、容积差、周期差与性价比指数（系统计算）。</p>
+    <p class="text-body-lg text-on-surface-variant mt-sm">左选一款集宝产品，右选一款竞品，逐一对标——展示每项指标的完整计算过程。</p>
   </div>
-  <div class="flex items-center gap-md">
-    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
-      <div class="font-display-lg text-display-lg text-on-surface tabular-nums leading-none">{{ own_count }}</div>
-      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">集宝在售型号</div>
+  <button id="add-own" class="flex items-center gap-sm px-md py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity self-start">
+    <span class="material-symbols-outlined" style="font-size:18px;">add</span>新增集宝产品
+  </button>
+</div>
+
+<!-- Two pickers -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+  <!-- 集宝 -->
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden flex flex-col">
+    <div class="px-lg py-md border-b border-outline-variant/30 flex items-center gap-sm">
+      <span class="px-2 py-0.5 rounded bg-primary-container text-on-primary font-label-sm text-label-sm">集宝</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface">我司产品</h2>
+      <span class="ml-auto font-body-sm text-body-sm text-on-surface-variant">{{ own|length }} 款</span>
     </div>
-    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
-      <div class="font-display-lg text-display-lg text-tertiary-fixed-dim tabular-nums leading-none">{{ pair_count }}</div>
-      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">对标配对</div>
+    <div class="p-sm border-b border-outline-variant/20">
+      <input id="own-search" placeholder="搜索集宝产品…" class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
     </div>
+    <div id="own-list" class="divide-y divide-outline-variant/20 max-h-[360px] overflow-y-auto"></div>
+  </div>
+
+  <!-- 竞品 -->
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden flex flex-col">
+    <div class="px-lg py-md border-b border-outline-variant/30 flex items-center gap-sm">
+      <span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">竞品</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface">竞争对手产品</h2>
+      <span class="ml-auto font-body-sm text-body-sm text-on-surface-variant">{{ competitors|length }} 款</span>
+    </div>
+    <div class="p-sm border-b border-outline-variant/20 flex gap-sm">
+      <input id="comp-search" placeholder="搜索竞品…" class="flex-1 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      <select id="comp-company" class="px-2 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md">
+        <option value="">全部品牌</option>
+        {% for c in companies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div id="comp-list" class="divide-y divide-outline-variant/20 max-h-[360px] overflow-y-auto"></div>
+  </div>
+</section>
+
+<!-- Selection bar -->
+<div class="sticky top-16 z-30 bg-surface-container rounded-xl border border-outline-variant/40 shadow-sm px-lg py-md flex flex-col md:flex-row md:items-center gap-sm">
+  <div class="flex items-center gap-sm flex-1 min-w-0">
+    <span class="material-symbols-outlined text-primary">check_circle</span>
+    <span id="sel-own" class="font-body-md text-on-surface-variant truncate">未选择集宝产品</span>
+  </div>
+  <span class="material-symbols-outlined text-outline">sync_alt</span>
+  <div class="flex items-center gap-sm flex-1 min-w-0">
+    <span class="material-symbols-outlined text-on-surface-variant">check_circle</span>
+    <span id="sel-comp" class="font-body-md text-on-surface-variant truncate">未选择竞品</span>
+  </div>
+  <button id="do-compare" disabled class="px-lg py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity disabled:opacity-40">开始对标</button>
+</div>
+
+<!-- Result -->
+<div id="compare-result"></div>
+
+<!-- Add-own modal -->
+<div id="own-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-lg py-md border-b border-outline-variant/40">
+      <h2 class="font-headline-md text-headline-md text-on-surface">新增集宝产品</h2>
+      <button id="own-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="own-form" class="grid grid-cols-2 gap-md p-lg" onsubmit="return false;">
+      <div class="col-span-2"><label class="font-label-md text-label-md text-on-surface-variant">产品名称 *</label>
+        <input name="product_name" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">系列</label>
+        <input name="series" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">价格 ¥</label>
+        <input name="price" type="number" step="0.01" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">宽 mm</label>
+        <input name="width_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">深 mm</label>
+        <input name="depth_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">高 mm</label>
+        <input name="height_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">容积 L（留空自动按尺寸算）</label>
+        <input name="capacity_l" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">重量 kg</label>
+        <input name="weight_kg" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">防盗等级（GB A/B/C 或 欧标 S1/S2/I..VI）</label>
+        <input name="gb_grade" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">防火等级</label>
+        <input name="fire_rating" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div><label class="font-label-md text-label-md text-on-surface-variant">交货周期（天，0=现货）</label>
+        <input name="lead_time_days" type="number" value="0" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/></div>
+      <div class="col-span-2 flex items-center gap-md mt-sm">
+        <button id="own-save" class="px-lg py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">保存</button>
+        <span id="own-status" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+      </div>
+    </form>
   </div>
 </div>
 
-{% if own_count == 0 %}
-<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
-  <span class="material-symbols-outlined text-outline" style="font-size:48px;">upload_file</span>
-  <p class="text-on-surface-variant text-body-lg mt-md">尚未导入集宝产品目录。运行 <code>chubb-ci import-catalog ChubbProductsList.xlsx</code> 后即可进行对标分析。</p>
-</div>
-{% elif not rows %}
-<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
-  <span class="material-symbols-outlined text-outline" style="font-size:48px;">compare_arrows</span>
-  <p class="text-on-surface-variant text-body-lg mt-md">暂无可计算的对标配对。请在 <code>config/counterparts.yaml</code> 配置我司型号与竞品的对应关系（需竞品数据已抓取入库）。</p>
-</div>
-{% else %}
+{% endblock %}
+{% block scripts %}
+<script id="own-data" type="application/json">{{ own|tojson }}</script>
+<script id="comp-data" type="application/json">{{ competitors|tojson }}</script>
+<script>
+(function () {
+  const own = JSON.parse(document.getElementById('own-data').textContent);
+  const comps = JSON.parse(document.getElementById('comp-data').textContent);
+  let selOwn = null, selComp = null;
 
-<div class="space-y-gutter">
-  {% for r in rows %}
-  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
-    <!-- Pair header -->
-    <div class="flex flex-col md:flex-row md:items-center gap-sm px-lg py-md bg-surface-container-low border-b border-outline-variant/30">
-      <div class="flex items-center gap-sm">
-        <span class="px-2 py-0.5 rounded bg-primary-container text-on-primary font-label-sm text-label-sm">集宝</span>
-        <span class="font-headline-md text-headline-md text-on-surface">{{ r.own_name }}</span>
-        {% if r.own_series %}<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ r.own_series }}</span>{% endif %}
-      </div>
-      <span class="material-symbols-outlined text-outline mx-sm hidden md:block">sync_alt</span>
-      <div class="flex items-center gap-sm">
-        <span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">{{ r.comp_company }}</span>
-        <span class="font-headline-md text-headline-md text-on-surface">{{ r.comp_name }}</span>
-      </div>
-      {% if r.note %}<span class="md:ml-auto font-body-sm text-body-sm text-on-surface-variant">{{ r.note }}</span>{% endif %}
-    </div>
+  const money = (v) => v == null ? '—' : '¥' + Math.round(v).toLocaleString();
+  const sub = (p) => [p.price != null ? money(p.price) : null,
+                      p.capacity_l != null ? p.capacity_l + 'L' : null,
+                      p.security_score != null ? '防盗' + p.security_score : null]
+                      .filter(Boolean).join(' · ') || '—';
 
-    <!-- Metrics grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-outline-variant/20">
-      <!-- 价格差 -->
-      <div class="bg-surface-container-lowest p-md">
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">价格差</div>
-        {% if r.price_diff_pct is not none %}
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.price_diff_pct > 5 %}text-error{% elif r.price_diff_pct < -5 %}text-secondary{% else %}text-on-surface{% endif %}">{{ '%+.1f'|format(r.price_diff_pct) }}%</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">¥{{ '{:,.0f}'.format(r.own_price) }} vs ¥{{ '{:,.0f}'.format(r.comp_price) }}</div>
-        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
-      </div>
-      <!-- 容积差 -->
-      <div class="bg-surface-container-lowest p-md">
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">容积差</div>
-        {% if r.volume_diff_pct is not none %}
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ '%+.1f'|format(r.volume_diff_pct) }}%</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">{{ r.own_capacity_l }}L vs {{ r.comp_capacity_l }}L</div>
-        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
-      </div>
-      <!-- 周期差 -->
-      <div class="bg-surface-container-lowest p-md relative overflow-hidden">
-        {% if r.lead_advantage %}<div class="absolute top-0 right-0 w-12 h-12 bg-tertiary-fixed-dim/20 rounded-bl-full"></div>{% endif %}
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">周期差</div>
-        {% if r.lead_delta is not none %}
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.lead_advantage %}text-tertiary-fixed-dim{% else %}text-on-surface{% endif %}">{{ '%+d'|format(r.lead_delta) }} 天</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{{ r.own_lead_days }}天 vs {{ r.comp_lead_days }}天{% if r.lead_advantage %} · 现货优势{% endif %}</div>
-        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
-      </div>
-      <!-- 元/升 -->
-      <div class="bg-surface-container-lowest p-md">
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">元/升</div>
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ r.own_price_per_l or '—' }}</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">竞品 {{ r.comp_price_per_l or '—' }}</div>
-      </div>
-      <!-- 元/公斤 -->
-      <div class="bg-surface-container-lowest p-md">
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">元/公斤</div>
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs text-on-surface">{{ r.own_price_per_kg or '—' }}</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs tabular-nums">竞品 {{ r.comp_price_per_kg or '—' }}</div>
-      </div>
-      <!-- 性价比指数 -->
-      <div class="bg-surface-container-lowest p-md">
-        <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">性价比指数</div>
-        {% if r.vfm_index is not none %}
-        <div class="font-headline-lg text-headline-lg tabular-nums mt-xs {% if r.vfm_good %}text-secondary{% else %}text-on-surface{% endif %}">{{ r.vfm_index }}</div>
-        <div class="font-body-sm text-body-sm text-on-surface-variant mt-xs">{% if r.vfm_good %}我司单位成本更优{% else %}竞品单位成本更低{% endif %}</div>
-        {% else %}<div class="font-headline-lg text-headline-lg text-on-surface-variant mt-xs">—</div>{% endif %}
-      </div>
-    </div>
+  function renderList(el, items, sideKey) {
+    el.innerHTML = items.map((p) => `
+      <button data-id="${p.id}" class="pick-row w-full text-left px-lg py-sm hover:bg-secondary-fixed/40 transition-colors ${((sideKey==='own'?selOwn:selComp)||{}).id===p.id?'bg-secondary-fixed/60':''}">
+        <div class="font-medium text-on-surface truncate">${sideKey==='comp'&&p.company?`<span class="text-on-surface-variant text-sm">[${p.company}] </span>`:''}${p.name}</div>
+        <div class="text-xs text-on-surface-variant">${sub(p)}</div>
+      </button>`).join('') || '<p class="px-lg py-md text-body-sm text-on-surface-variant">无匹配。</p>';
+    el.querySelectorAll('.pick-row').forEach((b) => b.addEventListener('click', () => {
+      const item = items.find((x) => String(x.id) === b.dataset.id);
+      if (sideKey === 'own') { selOwn = item; document.getElementById('sel-own').textContent = '集宝：' + item.name; }
+      else { selComp = item; document.getElementById('sel-comp').textContent = '竞品：' + (item.company?item.company+' ':'') + item.name; }
+      filterOwn(); filterComp();
+      document.getElementById('do-compare').disabled = !(selOwn && selComp);
+    }));
+  }
 
-    {% if r.own_security_score or r.comp_security_score %}
-    <div class="px-lg py-sm border-t border-outline-variant/20 flex items-center gap-md">
-      <span class="font-label-sm text-label-sm text-on-surface-variant">防盗等级分：</span>
-      <span class="font-body-sm text-body-sm text-on-surface tabular-nums">集宝 {{ r.own_security_score or '—' }} ｜ 竞品 {{ r.comp_security_score or '—' }}</span>
-      {% if r.own_security_score and r.comp_security_score and r.own_security_score > r.comp_security_score %}
-      <span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">防护更强，支撑溢价论据</span>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
+  function filterOwn() {
+    const q = document.getElementById('own-search').value.trim().toLowerCase();
+    renderList(document.getElementById('own-list'),
+      own.filter((p) => !q || p.name.toLowerCase().includes(q)), 'own');
+  }
+  function filterComp() {
+    const q = document.getElementById('comp-search').value.trim().toLowerCase();
+    const co = document.getElementById('comp-company').value;
+    renderList(document.getElementById('comp-list'),
+      comps.filter((p) => (!q || p.name.toLowerCase().includes(q)) && (!co || p.company === co)), 'comp');
+  }
+  document.getElementById('own-search').addEventListener('input', filterOwn);
+  document.getElementById('comp-search').addEventListener('input', filterComp);
+  document.getElementById('comp-company').addEventListener('change', filterComp);
+  filterOwn(); filterComp();
 
+  const TONE = {up: 'text-secondary', down: 'text-error', neutral: 'text-on-surface', muted: 'text-on-surface-variant/50'};
+  document.getElementById('do-compare').addEventListener('click', async () => {
+    if (!selOwn || !selComp) return;
+    const box = document.getElementById('compare-result');
+    box.innerHTML = '<div class="text-center py-lg text-on-surface-variant">计算中…</div>';
+    const res = await fetch(`/api/benchmark/compare?own_id=${selOwn.id}&comp_id=${selComp.id}`);
+    const j = await res.json();
+    if (!res.ok) { box.innerHTML = `<div class="text-error py-md">${j.error || '计算失败'}</div>`; return; }
+    const calcRows = j.calcs.map((c) => `
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-sm px-lg py-md border-b border-outline-variant/30 items-center">
+        <div class="md:col-span-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">${c.label}${c.unit?' ('+c.unit+')':''}</div>
+        <div class="md:col-span-5 font-body-sm text-body-sm text-on-surface-variant" style="font-family:ui-monospace,monospace">${c.formula}</div>
+        <div class="md:col-span-2 font-headline-md text-headline-md tabular-nums ${TONE[c.tone]||'text-on-surface'}">${c.result}</div>
+        <div class="md:col-span-2 font-body-sm text-body-sm text-on-surface-variant">${c.hint||''}</div>
+      </div>`).join('');
+    box.innerHTML = `
+      <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+        <div class="px-lg py-md bg-surface-container-low border-b border-outline-variant/30 flex flex-wrap items-center gap-sm">
+          <span class="px-2 py-0.5 rounded bg-primary-container text-on-primary font-label-sm text-label-sm">集宝</span>
+          <span class="font-headline-md text-headline-md text-on-surface">${j.own.name}</span>
+          <span class="material-symbols-outlined text-outline mx-sm">sync_alt</span>
+          <span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">${j.comp.company||'竞品'}</span>
+          <span class="font-headline-md text-headline-md text-on-surface">${j.comp.name}</span>
+        </div>
+        <div class="hidden md:grid grid-cols-12 gap-sm px-lg py-sm bg-surface-container-low/60 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+          <div class="col-span-3">指标</div><div class="col-span-5">计算式</div><div class="col-span-2">结果</div><div class="col-span-2">解读</div>
+        </div>
+        ${calcRows}
+      </div>`;
+    box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  });
+
+  // --- add own product modal ---
+  const modal = document.getElementById('own-modal'), form = document.getElementById('own-form');
+  document.getElementById('add-own').addEventListener('click', () => { document.getElementById('own-status').textContent=''; modal.classList.remove('hidden'); });
+  document.getElementById('own-close').addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+  document.getElementById('own-save').addEventListener('click', async () => {
+    const body = {};
+    [...form.elements].forEach((el) => { if (el.name && el.value.trim() !== '') body[el.name] = el.value.trim(); });
+    if (!body.product_name) { document.getElementById('own-status').textContent = '产品名称必填'; return; }
+    document.getElementById('own-status').textContent = '保存中…';
+    const res = await fetch('/api/own-products', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    if (res.ok) { document.getElementById('own-status').textContent = '已保存，刷新中…'; setTimeout(() => location.reload(), 500); }
+    else { const j = await res.json().catch(() => ({})); document.getElementById('own-status').textContent = '失败：' + (j.error || res.status); }
+  });
+})();
+</script>
 {% endblock %}

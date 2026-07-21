@@ -30,6 +30,7 @@ _CONSISTENCY_PENALTY = 0.4
 _PRICE_SANE = (50.0, 5_000_000.0)          # CNY
 _CAPACITY_SANE = (1.0, 5_000.0)            # liters
 _WEIGHT_SANE = (1.0, 5_000.0)              # kg
+_DIMENSION_SANE = (10.0, 10_000.0)         # mm
 
 
 class VerifyResult(BaseModel):
@@ -66,6 +67,9 @@ def _consistency(fact: SourcedFact, known_price_band: tuple[float, float] | None
     if f == "weight_kg":
         n = _num(v)
         return n is not None and _WEIGHT_SANE[0] <= n <= _WEIGHT_SANE[1]
+    if f in ("width_mm", "depth_mm", "height_mm"):
+        n = _num(v)
+        return n is not None and _DIMENSION_SANE[0] <= n <= _DIMENSION_SANE[1]
     return None  # free-text fields (positioning, features…) — not checkable here
 
 

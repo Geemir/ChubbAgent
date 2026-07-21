@@ -35,3 +35,58 @@ def test_content_hash_stable_and_whitespace_insensitive():
     a = content_hash("产品中心\n  保险柜  \n")
     b = content_hash("产品中心\n保险柜\n")
     assert a == b
+
+
+def _fetcher(**kw):
+    from chubb_ci.crawler.browser_fetcher import BrowserFetcher
+    return BrowserFetcher(user_agent="ua", **kw)
+
+
+def test_browser_fetch_retries_transient_error(monkeypatch):
+    from chubb_ci.crawler.fetch_base import FetchResult
+
+    f = _fetcher(retries=2)
+    calls = {"n": 0}
+
+    def fake_once(url):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            return FetchResult(url=url, ok=False, error="timeout")
+        return FetchResult(url=url, ok=True, status=200, html="<html>ok</html>")
+
+    monkeypatch.setattr(f, "_fetch_once", fake_once)
+    monkeypatch.setattr("chubb_ci.crawler.browser_fetcher.time.sleep", lambda *_: None)
+    res = f.fetch("http://x")
+    assert res.ok and calls["n"] == 3
+
+
+def test_is_blocked_detects_jd_ratelimit_deep_in_body():
+    from chubb_ci.crawler.browser_fetcher import is_blocked
+
+    # JD's block sits ~90 KB into the page inside a `_noDataCen` div — must still catch it.
+    html = "<html><body>" + ("<div class='pad'></div>" * 4000) + \
+           "<div class='_noDataCen_ce5n7_6'>很抱歉，由于访问频率过高，暂时无法访问，请稍后再试！</div></body></html>"
+    assert len(html) > 8000
+    assert is_blocked(html)
+
+
+def test_is_blocked_ignores_normal_marketplace_page():
+    from chubb_ci.crawler.browser_fetcher import is_blocked
+
+    html = "<html><body><li class='gl-item'><div class='p-price'>¥999</div></li></body></html>"
+    assert not is_blocked(html)
+
+
+def test_browser_fetch_does_not_retry_on_block(monkeypatch):
+    from chubb_ci.crawler.fetch_base import FetchResult
+
+    f = _fetcher(retries=3)
+    calls = {"n": 0}
+
+    def fake_once(url):
+        calls["n"] += 1
+        return FetchResult(url=url, ok=False, status=200, blocked=True, html="验证码")
+
+    monkeypatch.setattr(f, "_fetch_once", fake_once)
+    res = f.fetch("http://x")
+    assert res.blocked and calls["n"] == 1  # blocked → no retry

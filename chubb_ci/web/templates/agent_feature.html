@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{{ feature.title }}{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-sm text-body-sm text-on-surface-variant">
+  <a href="/research-agent" class="hover:text-primary flex items-center gap-xs"><span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>研究智能体</a>
+  <span>/</span><span class="text-on-surface">{{ feature.title }}</span>
+</div>
+
+<div class="flex items-center gap-md">
+  <div class="w-12 h-12 rounded-lg bg-secondary-fixed flex items-center justify-center">
+    <span class="material-symbols-outlined text-on-secondary-fixed" style="font-size:26px;">{{ feature.icon }}</span>
+  </div>
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">{{ feature.title }}</h1>
+    <p class="text-body-lg text-on-surface-variant mt-xs">{{ feature.subtitle }}</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+  <!-- Launcher -->
+  <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col gap-md">
+    <h2 class="font-headline-md text-headline-md text-on-surface">启动任务</h2>
+
+    {% if feature.needs_search and not search_on %}
+    <div class="bg-error-container/50 rounded-lg p-sm text-body-sm text-on-error-container flex items-start gap-sm">
+      <span class="material-symbols-outlined" style="font-size:18px;">wifi_off</span>
+      <span>本功能需联网搜索。请在 <code>.env</code> 配置 <code>CHUBB_SEARCH_PROVIDER=bocha</code> 与 <code>CHUBB_SEARCH_API_KEY</code>{% if feature.key == 'research' %}，或在下方直接指定页面 URL{% endif %}。</span>
+    </div>
+    {% endif %}
+
+    {% if feature.key == 'research' %}
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">竞品品牌名 *</label>
+      <input id="research-brand" placeholder="如：盾牌 Dunpai" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+    </div>
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">指定页面 URL（可选）</label>
+      <input id="research-url" placeholder="https://… 未配置搜索时必填" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+    </div>
+    <button onclick="agentStart({workflow:'research', brand: v('research-brand'), url: v('research-url')})" class="mt-auto self-start px-lg py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始深挖</button>
+
+    {% elif feature.key == 'enrich' %}
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">产品 ID *</label>
+      <input id="enrich-product-id" type="number" min="1" placeholder="在「产品情报」查看产品 ID" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">提示：也可从产品详情页点「自动搜集参数」直接触发。</p>
+    </div>
+    <button onclick="agentStart({workflow:'enrich', product_id: v('enrich-product-id')})" class="mt-auto self-start px-lg py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始搜集</button>
+
+    {% elif feature.key == 'ingest' %}
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">上传文档（.pptx / .pdf）</label>
+      <label class="mt-xs flex items-center justify-center gap-sm px-md py-6 rounded-lg border-2 border-dashed border-outline-variant hover:border-primary cursor-pointer transition-colors text-on-surface-variant">
+        <span class="material-symbols-outlined">upload_file</span>
+        <span id="ingest-upload-label">点击选择文件或拖拽到此</span>
+        <input id="ingest-file-input" type="file" accept=".pptx,.pdf" class="hidden"/>
+      </label>
+      <span id="ingest-upload-status" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+    </div>
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">或选择已有文档</label>
+      <select id="ingest-file" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md"></select>
+    </div>
+    <button id="ingest-start" onclick="startIngest()" class="mt-auto self-start px-lg py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始摄取</button>
+
+    {% elif feature.key == 'sentiment' %}
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">品牌 / 话题</label>
+      <input id="sentiment-goal" value="集宝 ChubbSafes 保险柜" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">默认分析集宝自身舆情；可改为任意品牌或话题。</p>
+    </div>
+    <button onclick="agentStart({workflow:'sentiment', goal: v('sentiment-goal')})" class="mt-auto self-start px-lg py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始分析</button>
+    {% endif %}
+  </div>
+
+  <!-- Instructions -->
+  <div class="lg:col-span-7 bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+    <div class="flex items-center gap-sm mb-md">
+      <span class="material-symbols-outlined text-secondary">help</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface">使用说明</h2>
+    </div>
+    <ol class="space-y-sm">
+      {% for step in feature.how %}
+      <li class="flex gap-sm">
+        <span class="shrink-0 w-6 h-6 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm flex items-center justify-center">{{ loop.index }}</span>
+        <span class="font-body-md text-on-surface">{{ step }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="mt-md pt-md border-t border-outline-variant/40 flex items-start gap-sm">
+      <span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-size:20px;">verified_user</span>
+      <p class="font-body-sm text-body-sm text-on-surface-variant">{{ feature.note }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Live run console (scoped to this workflow) -->
+{% set console_workflow = feature.key %}
+{% include "_agent_console.html" %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+  function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ""; }
+
+  {% if feature.key == 'ingest' %}
+  // Load existing docs into the dropdown.
+  (async function () {
+    try {
+      const json = await (await fetch("/api/agent/files")).json();
+      const sel = document.getElementById("ingest-file");
+      window.__docPaths = json.paths || {};
+      sel.innerHTML = (json.files || []).map((f) => `<option value="${f}">${f}</option>`).join("")
+        || '<option value="">（暂无可用文档，请上传）</option>';
+    } catch (e) {}
+  })();
+
+  // Upload a chosen file (base64) → server path, then auto-fill for ingest.
+  document.getElementById("ingest-file-input").addEventListener("change", (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const status = document.getElementById("ingest-upload-status");
+    document.getElementById("ingest-upload-label").textContent = file.name;
+    status.textContent = "上传中…";
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch("/api/agent/upload", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({data: reader.result, filename: file.name}),
+        });
+        const json = await res.json();
+        if (!res.ok) { status.textContent = "上传失败：" + (json.error || res.status); return; }
+        window.__uploadedPath = json.path;
+        status.innerHTML = '已上传 ✓ 点「开始摄取」即可处理';
+      } catch (e) { status.textContent = "上传失败：" + e.message; }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  window.startIngest = function () {
+    // Prefer a freshly uploaded file; else the selected existing doc.
+    const path = window.__uploadedPath
+      || (window.__docPaths || {})[document.getElementById("ingest-file").value]
+      || document.getElementById("ingest-file").value;
+    if (!path) { alert("请先上传或选择一个文档"); return; }
+    agentStart({workflow: "ingest", path: path});
+  };
+  {% endif %}
+</script>
+{% endblock %}

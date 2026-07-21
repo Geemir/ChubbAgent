@@ -6,13 +6,15 @@ Each source is processed independently; one failing source never aborts the run.
 
 from __future__ import annotations
 
+import re
+import time
 from datetime import date, datetime, timedelta, timezone
 
 from loguru import logger
 from pydantic import BaseModel
 
 from chubb_ci.config.settings import Settings, get_settings
-from chubb_ci.config.sources import Source, enabled_sources, load_sources
+from chubb_ci.config.sources import FetcherKind, Source, enabled_sources, load_sources
 from chubb_ci.crawler.orchestrator import fetch_and_clean, make_fetcher
 from chubb_ci.diff.engine import DiffEventData, diff_products
 from chubb_ci.extractor.extractor import extract_products
@@ -57,6 +59,7 @@ class CrawlSummary(BaseModel):
 def _to_record(
     p: ExtractedProduct, *, snapshot_id: int, run_id: int, source: Source
 ) -> ProductRecord:
+    from chubb_ci.diff.matching import model_code
     from chubb_ci.normalize import fire_hours, security_score, volume_l
 
     # Deterministic standardization at ingest (never computed by the LLM).
@@ -66,8 +69,10 @@ def _to_record(
         run_id=run_id,
         source_name=source.name,
         company=source.company,
+        channel=source.channel,
         product_name=p.product_name,
         product_key=p.product_key(),
+        model_code=model_code(p.product_name),
         series=p.series,
         category=p.category,
         price=p.price,
@@ -89,10 +94,129 @@ def _to_record(
         lead_time_days=p.lead_time_days,
         sales_volume=p.sales_volume,
         status_label=p.status_label,
+        image_url=p.image_url,
+        product_url=p.product_url,
         source_url=p.source_url,
         fire_hours=fire_hours(p.fire_rating),
         security_score=security_score(p.gb_grade, p.euro_grade),
     )
+
+
+def _tile_to_product(tile, page_url: str) -> ExtractedProduct:
+    """Marketplace tile → ExtractedProduct (name/price/image/url/sales)."""
+    return ExtractedProduct(
+        product_name=tile.name, category="保险柜", price=tile.price, currency="CNY",
+        sales_volume=tile.sales_volume, image_url=tile.image_url,
+        product_url=tile.product_url, source_url=page_url,
+    )
+
+
+def _enrich_details(
+    settings: Settings, source: Source, products: list[ExtractedProduct], summary
+) -> None:
+    """Fetch a bounded number of detail pages and fill missing specs on those products."""
+    from chubb_ci.crawler.detail import extract_specs
+
+    n_max = settings.detail_enrich_max
+    if n_max <= 0:
+        return
+    # Enrich the priciest / highest-sales products first (most decision-relevant).
+    candidates = [p for p in products if p.product_url and p.capacity_l is None]
+    candidates.sort(key=lambda p: (p.sales_volume or 0, p.price or 0), reverse=True)
+    if not candidates:
+        return
+
+    fetcher = make_fetcher(source, settings)
+    enriched = 0
+    for p in candidates[:n_max]:
+        try:
+            res = fetcher.fetch(p.product_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("detail fetch failed {}: {}", p.product_url, exc)
+            continue
+        if not res.ok or not res.html:
+            continue
+        specs = extract_specs(res.html)
+        for field, value in specs.items():
+            if getattr(p, field, None) is None:
+                setattr(p, field, value)
+        if specs:
+            enriched += 1
+    if enriched:
+        logger.info("detail enrichment: filled specs on {} products for {}",
+                    enriched, source.name)
+
+
+def _name_from_detail(html: str) -> str:
+    """Fallback product name from a detail page's <h1>/<title> when the listing had none."""
+    from selectolax.parser import HTMLParser
+
+    tree = HTMLParser(html)
+    for sel in ("h1", ".product-title", ".pro-title", ".title"):
+        n = tree.css_first(sel)
+        if n and len(n.text(strip=True)) >= 3:
+            return n.text(strip=True)[:120]
+    t = tree.css_first("title")
+    if t:  # drop the "… | 品牌" site suffix
+        return re.split(r"[|｜\-–—]", t.text(strip=True))[0].strip()[:120]
+    return ""
+
+
+def _crawl_catalog_page(
+    settings: Settings, source: Source, url: str, html: str
+) -> list[ExtractedProduct]:
+    """Spider one 官网 listing/category page → every product (name/image/specs).
+
+    ``selectors.product_href`` (regex) marks detail links. When ``enrich_details`` is set,
+    each detail page is fetched and its spec table parsed (dims/weight/certs); otherwise
+    we keep just the name + official image from the listing (JS sites with AJAX specs).
+    """
+    from chubb_ci.crawler.catalog import parse_catalog_entries
+    from chubb_ci.crawler.detail import extract_main_image, extract_specs
+
+    sel = source.selectors or {}
+    href = sel.get("product_href")
+    if not href:
+        logger.warning("catalog source {} missing selectors.product_href; skipping", source.name)
+        return []
+
+    res = parse_catalog_entries(
+        html, url, product_href=href, name_sel=sel.get("name"), image_sel=sel.get("image"))
+    entries = res.entries[: max(1, source.catalog_max_pages)]
+    if not entries:
+        return []
+
+    fetcher = make_fetcher(source, settings) if source.enrich_details else None
+    delay = max(0.0, settings.rate_limit_delay) if source.fetcher is FetcherKind.BROWSER else 0.0
+    products: list[ExtractedProduct] = []
+    enriched = 0
+    for i, e in enumerate(entries):
+        name, specs, image = e.name, {}, e.image_url
+        if fetcher is not None:
+            if i and delay:
+                time.sleep(delay)  # polite spacing between detail fetches
+            try:
+                d = fetcher.fetch(e.url)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("catalog detail fetch failed {}: {}", e.url, exc)
+                d = None
+            if d and d.ok and d.html:
+                specs = extract_specs(d.html)
+                if specs:
+                    enriched += 1
+                if not name:
+                    name = _name_from_detail(d.html)
+                if not image:  # grab the official product image from the detail page
+                    image = extract_main_image(d.html, e.url)
+        if not name:
+            continue
+        products.append(ExtractedProduct(
+            product_name=name, category="保险柜",
+            image_url=image, product_url=e.url, source_url=url, **specs,
+        ))
+    logger.info("catalog spider: {} products ({} spec-enriched) for {} {}",
+                len(products), enriched, source.name, url)
+    return products
 
 
 def _events_to_rows(
@@ -161,9 +285,16 @@ def run_crawl(
         run = repo.create_run(kind)
         summary = CrawlSummary(run_id=run.id, kind=kind)
 
+        # Marketplaces (JD especially) rate-limit by IP; back-to-back requests trip
+        # "访问频率过高". Space out browser fetches by rate_limit_delay to stay polite.
+        browser_delay = max(0.0, settings.rate_limit_delay)
+        first = True
         for source in sources:
             for raw_url in source.urls:
                 url = override_urls.get(raw_url, raw_url)
+                if not first and source.fetcher is FetcherKind.BROWSER and browser_delay:
+                    time.sleep(browser_delay)
+                first = False
                 try:
                     _process_url(settings, repo, run.id, source, url, llm, extract_model,
                                  domain_context, summary)
@@ -256,36 +387,64 @@ def _process_url(
         raw_file.write_text(cleaned.fetch.html, encoding="utf-8")
         raw_path = str(raw_file)
 
-    # --- extract --------------------------------------------------------
-    result = extract_products(
-        llm, model=extract_model, source=source, url=url,
-        page_text=cleaned.main_text, domain_context=domain_context,
-        temperature=settings.llm_temperature,
-    )
-    summary.tokens_in += result.tokens_in
-    summary.tokens_out += result.tokens_out
+    # --- extract: tile parser for marketplace listings, else LLM --------
+    from chubb_ci.config.sources import FetcherKind, PageType
 
-    if not result.ok:
-        summary.sources_failed += 1
-        repo.add_snapshot(Snapshot(
-            run_id=run_id, source_name=source.name, company=source.company, url=url,
-            page_type=source.page_type.value, channel=source.channel,
-            content_hash=cleaned.content_hash, status=SnapshotStatus.ERROR.value,
-            error=result.error, raw_path=raw_path,
-        ))
-        return
+    products: list[ExtractedProduct] = []
+    is_listing = (source.fetcher is FetcherKind.BROWSER
+                  and source.page_type is PageType.PRICING)
+
+    # 官网 catalog spider: follow product-detail links from this listing/category page
+    # and extract EVERY product (name + official image + specs). Deterministic, no LLM.
+    if source.crawl_catalog and cleaned.fetch.html:
+        products = _crawl_catalog_page(settings, source, url, cleaned.fetch.html)
+
+    if not products and is_listing and cleaned.fetch.html:
+        from chubb_ci.crawler.tiles import parse_tiles
+
+        tiles = parse_tiles(cleaned.fetch.html, selectors=source.selectors,
+                            brand=source.company, base_url=url)
+        products = [_tile_to_product(t, url) for t in tiles]
+        if products:
+            logger.info("tile parser: {} products (with images) for {}",
+                        len(products), source.name)
+
+    # LLM fallback for 官网/news/detail (skip for catalog sources: their listing pages
+    # are near-empty nav text → LLM would only hallucinate series names).
+    if not products and not source.crawl_catalog:  # noqa: E501
+        result = extract_products(
+            llm, model=extract_model, source=source, url=url,
+            page_text=cleaned.main_text, domain_context=domain_context,
+            temperature=settings.llm_temperature,
+        )
+        summary.tokens_in += result.tokens_in
+        summary.tokens_out += result.tokens_out
+        if not result.ok:
+            summary.sources_failed += 1
+            repo.add_snapshot(Snapshot(
+                run_id=run_id, source_name=source.name, company=source.company, url=url,
+                page_type=source.page_type.value, channel=source.channel,
+                content_hash=cleaned.content_hash, status=SnapshotStatus.ERROR.value,
+                error=result.error, raw_path=raw_path,
+            ))
+            return
+        products = list(result.products)
+
+    # --- detail-page enrichment (fill specs from a bounded # of detail pages) ---
+    if is_listing and source.enrich_details:
+        _enrich_details(settings, source, products, summary)
 
     snapshot = repo.add_snapshot(Snapshot(
         run_id=run_id, source_name=source.name, company=source.company, url=url,
         page_type=source.page_type.value, channel=source.channel,
         content_hash=cleaned.content_hash, status=SnapshotStatus.OK.value,
-        raw_path=raw_path, num_products=len(result.products),
+        raw_path=raw_path, num_products=len(products),
     ))
     summary.sources_ok += 1
-    summary.products_extracted += len(result.products)
+    summary.products_extracted += len(products)
 
     records = [_to_record(p, snapshot_id=snapshot.id, run_id=run_id, source=source)
-               for p in result.products]
+               for p in products]
     repo.add_products(records)
 
     # --- diff vs previous baseline -------------------------------------
@@ -293,7 +452,7 @@ def _process_url(
     if baseline is None:
         summary.baselines += 1
         logger.info("baseline captured ({} products, no prior data to diff): {} {}",
-                    len(result.products), source.name, url)
+                    len(products), source.name, url)
         return
 
     previous = [record_to_extracted(r) for r in repo.products_for_snapshot(baseline.id)]

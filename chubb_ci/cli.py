@@ -172,6 +172,47 @@ def _latest_run_id(settings) -> int | None:
         return run.id if run else None
 
 
+@app.command("login")
+def login_cmd(
+    platform: str = typer.Argument(..., help="平台：jd | taobao | suning | pdd | douyin"),
+    timeout: int = typer.Option(180, "--timeout", help="等待登录的最长秒数"),
+) -> None:
+    """Capture a logged-in marketplace session (QR scan) for authenticated crawling."""
+    from chubb_ci.crawler.session import LOGIN_URLS, known_platforms, session_path
+
+    platform = platform.strip().lower()
+    if platform not in LOGIN_URLS:
+        console.print(f"[red]未知平台[/] '{platform}'。可选：{', '.join(known_platforms())}")
+        raise typer.Exit(1)
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        console.print("[red]需要浏览器组件[/]：uv sync --extra browser && uv run playwright install chromium")
+        raise typer.Exit(1)
+
+    out = session_path(platform)
+    url = LOGIN_URLS[platform]
+    console.print(f"[cyan]➜[/] 打开 {platform} 登录页，请用手机 App [bold]扫码登录[/]…")
+    console.print(f"   登录成功后回到本窗口，按 [bold]回车[/] 保存会话（最长等待 {timeout}s）。")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context(locale="zh-CN",
+                                      viewport={"width": 1280, "height": 900})
+        page = context.new_page()
+        try:
+            page.goto(url, timeout=60000)
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"[yellow]⚠[/] 打开登录页出错（可继续手动导航）：{exc}")
+        try:
+            typer.prompt("登录完成后按回车", default="", show_default=False)
+        except Exception:  # noqa: BLE001
+            page.wait_for_timeout(timeout * 1000)
+        context.storage_state(path=str(out))
+        browser.close()
+    console.print(f"[green]✓[/] 已保存 {platform} 会话到 {out}（已在 .gitignore 中）。"
+                  f"现在启用该平台的抓取源即可以登录态采集。")
+
+
 @app.command("serve")
 def serve_cmd() -> None:
     """Start the APScheduler loop (daily + weekly jobs)."""
@@ -260,6 +301,59 @@ def import_catalog_cmd(
     console.print(f"[green]✓[/] 已导入 {n} 款集宝产品；重新计算得到 {len(insights)} 条市场洞察")
 
 
+@app.command("ingest-email")
+def ingest_email_cmd(
+    limit: int = typer.Option(0, "--limit", help="最多处理最近 N 封（0=按配置）"),
+) -> None:
+    """Poll the 竞品订阅邮箱 (IMAP) → extract promos/products → 邮件订阅 channel."""
+    from chubb_ci.crawler.email_ingest import run_email_ingest
+    from chubb_ci.storage.db import init_db
+
+    settings = get_settings()
+    if not settings.email_user:
+        console.print("[yellow]邮箱未配置。[/] 在 .env 设置 CHUBB_EMAIL_USER / "
+                      "CHUBB_EMAIL_PASSWORD（163 授权码），可选 CHUBB_EMAIL_IMAP_HOST。")
+        raise typer.Exit(1)
+    init_db(settings)
+    s = run_email_ingest(settings, limit=limit or None)
+    console.print(
+        f"[green]✓[/] 邮箱拉取 {s.fetched} 封：新处理 {s.processed}（入库 {s.products} 款）"
+        f" · 去重跳过 {s.skipped_duplicates} · 出错 {len(s.errors)}"
+    )
+    for err in s.errors[:5]:
+        console.print(f"[red]  ! {err}[/]")
+
+
+@app.command("jd-prices")
+def jd_prices_cmd(
+    keyword: str = typer.Argument(..., help="搜索关键词，如「艾谱保险柜」"),
+    limit: int = typer.Option(10, "--limit", help="返回条数"),
+) -> None:
+    """Query official JD Union prices by keyword (needs CHUBB_JD_UNION_APP_KEY/SECRET)."""
+    from chubb_ci.crawler.jd_union import JDUnionClient
+
+    settings = get_settings()
+    client = JDUnionClient(settings)
+    if not client.available:
+        console.print("[yellow]JD Union 未配置。[/] 到 union.jd.com/openplatform 申请"
+                      "（推广管理→导购媒体，个人可申请），将 appkey/secret 写入 .env 的 "
+                      "CHUBB_JD_UNION_APP_KEY / CHUBB_JD_UNION_APP_SECRET。")
+        raise typer.Exit(1)
+    products = client.query_goods(keyword, page_size=limit)
+    if not products:
+        console.print("[yellow]无结果[/]（关键词无匹配，或接口权限/签名问题——见日志）")
+        raise typer.Exit(0)
+    table = Table(title=f"京东联盟 · {keyword}")
+    table.add_column("商品", max_width=46)
+    table.add_column("价格", justify="right")
+    table.add_column("30天销量", justify="right")
+    for p in products:
+        table.add_row(p.product_name[:46],
+                      f"¥{p.price:,.0f}" if p.price else "—",
+                      str(p.sales_volume or "—"))
+    console.print(table)
+
+
 @app.command("ingest-pptx")
 def ingest_pptx_cmd(
     path: Path = typer.Argument("CompetitorAnalysisV7.pptx", help="竞品分析 PPTX 路径"),
@@ -293,7 +387,7 @@ def ingest_pdf_cmd(
     console.print(f"[green]✓[/] 已更新领域背景: {out}")
 
 
-agent_app = typer.Typer(help="研究智能体：ingest / scan / research / discover")
+agent_app = typer.Typer(help="研究智能体：ingest / research / enrich / sentiment")
 app.add_typer(agent_app, name="agent")
 
 
@@ -319,12 +413,6 @@ def _run_agent(workflow: str, params: dict) -> None:
             console.print(f"[red]错误：{run.error}[/]")
 
 
-@agent_app.command("scan")
-def agent_scan_cmd() -> None:
-    """机会扫描 + 渠道文案起草（C3）。"""
-    _run_agent("scan", {})
-
-
 @agent_app.command("ingest")
 def agent_ingest_cmd(
     path: Path = typer.Argument("CompetitorAnalysisV7.pptx", help="PPTX/PDF 文档路径"),
@@ -342,12 +430,20 @@ def agent_research_cmd(
     _run_agent("research", {"brand": brand, "url": url})
 
 
-@agent_app.command("discover")
-def agent_discover_cmd(
-    goal: str = typer.Argument("找出我们尚未跟踪、但在中国销售保险柜的竞争对手"),
+@agent_app.command("sentiment")
+def agent_sentiment_cmd(
+    goal: str = typer.Argument("集宝 ChubbSafes 保险柜", help="品牌或话题"),
 ) -> None:
-    """竞品发现：搜索新品牌 → 候选进入人工确认队列（C4，需搜索服务）。"""
-    _run_agent("discover", {"goal": goal})
+    """舆情分析：联网检索相关内容 → 情感分类 → 生成舆情报告（需搜索服务）。"""
+    _run_agent("sentiment", {"goal": goal})
+
+
+@agent_app.command("enrich")
+def agent_enrich_cmd(
+    product_id: int = typer.Argument(..., help="要补充空缺参数的 ProductRecord ID"),
+) -> None:
+    """单品信息自动化搜集：浏览来源、交叉核查，只补空值。"""
+    _run_agent("enrich", {"product_id": product_id})
 
 
 @app.command("info")

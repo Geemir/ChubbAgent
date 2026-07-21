@@ -5,6 +5,8 @@ Shared by the pipeline (after each crawl), the seeder, and the dashboard service
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from loguru import logger
 
 from chubb_ci.analytics.capacity_bands import BandRow, band_matrix
@@ -14,13 +16,27 @@ from chubb_ci.schemas.models import Insight, OwnProduct, ProductRecord
 from chubb_ci.storage.repositories import Repository
 
 
+_MIN_TIME = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _aware(dt: datetime | None) -> datetime:
+    """Normalize possibly-naive/None DB timestamps to UTC-aware for safe comparison.
+
+    SQLite reads timestamps back as naive, but in-session records keep their
+    tz-aware ``crawl_time`` — comparing the two raises TypeError without this.
+    """
+    if dt is None:
+        return _MIN_TIME
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 def latest_per_product(products: list[ProductRecord]) -> dict[tuple[str, str], ProductRecord]:
     """Latest record per (company, product_key)."""
     latest: dict[tuple[str, str], ProductRecord] = {}
     for p in products:
         key = (p.company, p.product_key)
         cur = latest.get(key)
-        if cur is None or (p.crawl_time and cur.crawl_time and p.crawl_time >= cur.crawl_time):
+        if cur is None or _aware(p.crawl_time) >= _aware(cur.crawl_time):
             latest[key] = p
     return latest
 

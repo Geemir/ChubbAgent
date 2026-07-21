@@ -100,3 +100,18 @@ def test_severity_escalates_on_large_gap():
     insights = detect_opportunities([h], [])
     anomaly = next(i for i in insights if i.insight_type == "pricing_anomaly")
     assert anomaly.severity == "High"
+
+
+def test_latest_per_product_mixed_naive_and_aware_timestamps():
+    """SQLite reads timestamps back naive; in-session records stay tz-aware. The
+    comparison must not raise 'can't compare offset-naive and offset-aware'."""
+    from datetime import datetime, timezone
+
+    from chubb_ci.analytics.refresh import latest_per_product
+
+    naive = ProductRecord(company="X", product_name="老", product_key="k", price=100.0,
+                          crawl_time=datetime(2026, 7, 1, 12, 0, 0))               # naive
+    aware = ProductRecord(company="X", product_name="新", product_key="k", price=200.0,
+                          crawl_time=datetime(2026, 7, 9, 12, 0, 0, tzinfo=timezone.utc))
+    latest = latest_per_product([naive, aware])
+    assert latest[("X", "k")].price == 200.0  # newer (aware) wins, no crash

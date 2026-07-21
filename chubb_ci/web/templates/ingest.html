@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}手动录入{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">手动录入产品</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">粘贴商品页文字（标题、参数、详情均可），AI 自动识别成结构化产品；确认后入库（渠道：手动录入）。</p>
+  </div>
+  <a href="/products" class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors self-start">
+    <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>返回产品情报
+  </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+  <!-- Left: paste + parse -->
+  <section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col gap-md">
+    <h2 class="font-headline-md text-headline-md text-on-surface">1 · 粘贴产品文字</h2>
+    <div>
+      <label class="font-label-md text-label-md text-on-surface-variant">品牌（可选，留空则由 AI 判断）</label>
+      <input id="ing-brand" class="w-full mt-xs px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary" placeholder="如：艾谱 AIPU" type="text"/>
+    </div>
+    <textarea id="ing-text" rows="14" class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-secondary-fixed-dim resize-y"
+      placeholder="例：艾谱 AE881 全钢家用保险柜 高60cm 指纹密码锁 外形尺寸 宽380×深330×高600mm 净重52kg 3C认证 到手价 ¥1,899 …"></textarea>
+    <div class="flex items-center gap-md">
+      <button id="ing-parse" class="flex items-center gap-sm px-md py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">
+        <span class="material-symbols-outlined" style="font-size:18px;">auto_awesome</span>AI 识别
+      </button>
+      <span id="ing-parse-status" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+    </div>
+    <div id="ing-multi" class="hidden">
+      <p class="font-label-md text-label-md text-on-surface-variant mb-xs">识别到多款产品，点选载入：</p>
+      <div id="ing-multi-chips" class="flex flex-wrap gap-sm"></div>
+    </div>
+  </section>
+
+  <!-- Right: editable form + save -->
+  <section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-md">2 · 核对并保存</h2>
+    <form id="ing-form" class="grid grid-cols-2 gap-md" onsubmit="return false;">
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">产品名称 *</label>
+        <input name="product_name" required class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">品牌 / 竞争对手</label>
+        <input name="company" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">品类</label>
+        <input name="category" value="保险柜" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">价格 ¥</label>
+        <input name="price" type="number" step="0.01" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">促销</label>
+        <input name="promotion" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">宽 mm</label>
+        <input name="width_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">深 mm</label>
+        <input name="depth_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">高 mm</label>
+        <input name="height_mm" type="number" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">重量 kg</label>
+        <input name="weight_kg" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">容积 L（留空自动按尺寸计算）</label>
+        <input name="capacity_l" type="number" step="0.1" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">防火等级（如 UL 1小时 / 60分钟）</label>
+        <input name="fire_rating" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">防盗等级（如 GB A1 / 欧标S2）</label>
+        <input name="gb_grade" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div>
+        <label class="font-label-md text-label-md text-on-surface-variant">锁具类型</label>
+        <input name="lock_type" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary"/>
+      </div>
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">商品链接</label>
+        <input name="product_url" class="w-full mt-xs px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary" placeholder="https://…"/>
+      </div>
+      <div class="col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant">产品图片（本地上传或粘贴图片 URL）</label>
+        <div class="flex items-center gap-md mt-xs">
+          <img id="ing-img-preview" class="w-16 h-16 object-contain rounded bg-surface-container-low hidden" alt=""/>
+          <input name="image_url" id="ing-img-url" class="flex-1 px-3 py-2 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary" placeholder="https://… 或点右侧上传"/>
+          <label class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors cursor-pointer">
+            <span class="material-symbols-outlined" style="font-size:18px;">upload</span>上传
+            <input id="ing-img-file" type="file" accept="image/*" class="hidden"/>
+          </label>
+        </div>
+      </div>
+      <div class="col-span-2 flex items-center gap-md mt-sm">
+        <button id="ing-save" class="flex items-center gap-sm px-lg py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined" style="font-size:18px;">save</span>保存入库
+        </button>
+        <span id="ing-save-status" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+      </div>
+    </form>
+  </section>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('ing-form');
+  const F = (n) => form.elements[n];
+  let parsed = [];
+
+  function fillForm(p) {
+    const map = { product_name: p.product_name, company: p.company || document.getElementById('ing-brand').value,
+      category: p.category || '保险柜', price: p.price, promotion: p.promotion,
+      width_mm: p.width_mm, depth_mm: p.depth_mm, height_mm: p.height_mm,
+      weight_kg: p.weight_kg, capacity_l: p.capacity_l, fire_rating: p.fire_rating,
+      gb_grade: p.gb_grade, lock_type: p.lock_type, product_url: p.product_url,
+      image_url: p.image_url };
+    for (const [k, v] of Object.entries(map)) if (F(k)) F(k).value = v ?? '';
+    syncPreview();
+  }
+
+  function syncPreview() {
+    const url = F('image_url').value.trim();
+    const img = document.getElementById('ing-img-preview');
+    if (url) { img.src = url.startsWith('http') ? '/api/img?url=' + encodeURIComponent(url) : url;
+               img.classList.remove('hidden'); }
+    else img.classList.add('hidden');
+  }
+  F('image_url').addEventListener('change', syncPreview);
+
+  // --- AI parse -------------------------------------------------------
+  document.getElementById('ing-parse').addEventListener('click', async () => {
+    const text = document.getElementById('ing-text').value.trim();
+    const status = document.getElementById('ing-parse-status');
+    if (text.length < 10) { status.textContent = '请先粘贴产品文字'; return; }
+    status.textContent = 'AI 识别中…';
+    try {
+      const res = await fetch('/api/ingest/parse', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, company: document.getElementById('ing-brand').value.trim() }) });
+      const json = await res.json();
+      if (!res.ok) { status.textContent = '识别失败：' + (json.error || res.status); return; }
+      parsed = json.products || [];
+      if (!parsed.length) { status.textContent = '未识别出产品，请补充文字或手动填写右侧表单'; return; }
+      fillForm(parsed[0]);
+      status.textContent = `已识别 ${parsed.length} 款产品，已载入第 1 款，请核对`;
+      const multi = document.getElementById('ing-multi');
+      const chips = document.getElementById('ing-multi-chips');
+      chips.innerHTML = '';
+      if (parsed.length > 1) {
+        parsed.forEach((p, i) => {
+          const b = document.createElement('button');
+          b.className = 'px-sm py-1 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:bg-secondary-fixed';
+          b.textContent = (i + 1) + ' · ' + (p.product_name || '').slice(0, 24);
+          b.onclick = () => fillForm(parsed[i]);
+          chips.appendChild(b);
+        });
+        multi.classList.remove('hidden');
+      } else multi.classList.add('hidden');
+    } catch (e) { status.textContent = '识别失败：' + e.message; }
+  });
+
+  // --- image upload (base64 → /api/upload) ----------------------------
+  document.getElementById('ing-img-file').addEventListener('change', (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch('/api/upload', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: reader.result, filename: file.name }) });
+        const json = await res.json();
+        if (!res.ok) { alert('上传失败：' + (json.error || res.status)); return; }
+        F('image_url').value = json.url;
+        syncPreview();
+      } catch (e) { alert('上传失败：' + e.message); }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // --- save -----------------------------------------------------------
+  document.getElementById('ing-save').addEventListener('click', async () => {
+    const status = document.getElementById('ing-save-status');
+    const body = {};
+    ['product_name','company','category','price','promotion','width_mm','depth_mm','height_mm',
+     'weight_kg','capacity_l','fire_rating','gb_grade','lock_type','product_url','image_url']
+      .forEach(k => { const v = F(k).value.trim(); if (v !== '') body[k] = v; });
+    if (!body.product_name) { status.textContent = '产品名称必填'; return; }
+    status.textContent = '保存中…';
+    try {
+      const res = await fetch('/api/products', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const json = await res.json();
+      if (!res.ok) { status.textContent = '保存失败：' + (json.error || res.status); return; }
+      status.innerHTML = '已入库 ✓ <a class="text-primary underline" href="/products">查看产品情报</a>';
+    } catch (e) { status.textContent = '保存失败：' + e.message; }
+  });
+})();
+</script>
+{% endblock %}
