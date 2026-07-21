@@ -5,270 +5,39 @@
 <div class="flex items-center gap-md">
   <div>
     <h1 class="font-display-lg text-display-lg text-on-surface">研究智能体</h1>
-    <p class="text-body-lg text-on-surface-variant mt-sm">四类自动化工作流：全程有界执行、来源留痕、真实性核查、待确认信息人工审批。</p>
+    <p class="text-body-lg text-on-surface-variant mt-sm">四类自动化工作流：全程有界执行、来源留痕、真实性核查、待确认信息人工审批。选择一项进入其专属页面。</p>
   </div>
-  <span class="ml-auto px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md">已上线</span>
+  <span class="ml-auto flex items-center gap-sm px-3 py-1 rounded-full {% if search_on %}bg-success-container text-on-success-container{% else %}bg-error-container text-on-error-container{% endif %} font-label-md text-label-md">
+    <span class="material-symbols-outlined" style="font-size:16px;">{{ 'wifi' if search_on else 'wifi_off' }}</span>
+    联网搜索{{ '已启用' if search_on else '未配置' }}
+  </span>
 </div>
 
-<!-- Launchers -->
-<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
-  <!-- 机会扫描 -->
-  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+<!-- Feature cards → dedicated sub-pages -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+  {% for f in features %}
+  <a href="/research-agent/{{ f.key }}" class="group bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] hover:border-secondary transition-colors flex flex-col">
     <div class="flex items-center gap-sm mb-sm">
-      <span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings:'FILL' 1;">lightbulb</span>
-      <h3 class="font-headline-md text-headline-md text-on-surface">机会扫描</h3>
+      <div class="w-11 h-11 rounded-lg bg-secondary-fixed flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-secondary-fixed">{{ f.icon }}</span>
+      </div>
+      <h3 class="font-headline-md text-headline-md text-on-surface">{{ f.title }}</h3>
+      {% if f.needs_search %}<span class="ml-auto px-2 py-0.5 rounded {% if search_on %}bg-success-container text-on-success-container{% else %}bg-surface-container text-on-surface-variant{% endif %} font-label-sm text-label-sm">需联网</span>{% endif %}
     </div>
-    <p class="font-body-sm text-body-sm text-on-surface-variant flex-1">重算对标与容量段矩阵，为物流优势/定价异常起草渠道推广文案。</p>
-    <button onclick="agentStart({workflow:'scan'})" class="mt-md px-md py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始扫描</button>
-  </div>
-
-  <!-- 文档摄取 -->
-  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
-    <div class="flex items-center gap-sm mb-sm">
-      <span class="material-symbols-outlined text-secondary">upload_file</span>
-      <h3 class="font-headline-md text-headline-md text-on-surface">文档摄取</h3>
-    </div>
-    <p class="font-body-sm text-body-sm text-on-surface-variant">竞品 PPT/手册 → 结构化入库；LLM 抽取的档案声明经核查后进入人工确认队列。</p>
-    <select id="ingest-file" class="mt-sm px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md"></select>
-    <button onclick="agentStart({workflow:'ingest', path: document.getElementById('ingest-file').value})" class="mt-sm px-md py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始摄取</button>
-  </div>
-
-  <!-- 品牌深挖 -->
-  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
-    <div class="flex items-center gap-sm mb-sm">
-      <span class="material-symbols-outlined text-secondary">travel_explore</span>
-      <h3 class="font-headline-md text-headline-md text-on-surface">品牌深挖</h3>
-    </div>
-    <input id="research-brand" placeholder="品牌名（如 盾牌 Dunpai）" class="px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md"/>
-    <input id="research-url" placeholder="可选：指定页面 URL" class="mt-sm px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md"/>
-    <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">未配置搜索服务时必须提供 URL。</p>
-    <button onclick="agentStart({workflow:'research', brand: document.getElementById('research-brand').value, url: document.getElementById('research-url').value})" class="mt-auto px-md py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始深挖</button>
-  </div>
-
-  <!-- 竞品发现 -->
-  <div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
-    <div class="flex items-center gap-sm mb-sm">
-      <span class="material-symbols-outlined text-secondary">person_search</span>
-      <h3 class="font-headline-md text-headline-md text-on-surface">竞品发现</h3>
-    </div>
-    <input id="discover-goal" value="找出我们尚未跟踪、但在中国销售保险柜的竞争对手" class="px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md"/>
-    <p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">需配置联网搜索（CHUBB_SEARCH_PROVIDER=bocha）。</p>
-    <button onclick="agentStart({workflow:'discover', goal: document.getElementById('discover-goal').value})" class="mt-auto px-md py-2 rounded-lg bg-primary-container text-on-primary font-label-md hover:opacity-90 transition-opacity">开始发现</button>
-  </div>
+    <p class="font-body-md text-on-surface-variant flex-1">{{ f.subtitle }}</p>
+    <span class="mt-md inline-flex items-center gap-1 text-primary font-label-md group-hover:gap-2 transition-all">进入 <span class="material-symbols-outlined" style="font-size:18px;">arrow_forward</span></span>
+  </a>
+  {% endfor %}
 </section>
 
-<!-- Runs + live console -->
-<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-  <!-- Run list -->
-  <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
-    <div class="px-lg py-md border-b border-outline-variant/30 flex items-center justify-between">
-      <h2 class="font-headline-md text-headline-md text-on-surface">运行记录</h2>
-      <button onclick="loadRuns()" class="material-symbols-outlined text-on-surface-variant hover:text-primary" style="font-size:20px;">refresh</button>
-    </div>
-    <div id="run-list" class="divide-y divide-outline-variant/30 max-h-[480px] overflow-y-auto">
-      <p class="px-lg py-md text-body-sm text-on-surface-variant">暂无运行记录。</p>
-    </div>
-  </div>
+{% if not search_on %}
+<div class="bg-tertiary-fixed/20 rounded-xl p-md border border-tertiary-fixed-dim/40 flex items-start gap-sm">
+  <span class="material-symbols-outlined text-tertiary-fixed-dim">info</span>
+  <p class="font-body-md text-on-surface">「品牌深挖 / 竞品信息自动化搜集 / 舆情分析」需联网搜索。在 <code>.env</code> 配置 <code>CHUBB_SEARCH_PROVIDER=bocha</code> 与 <code>CHUBB_SEARCH_API_KEY</code> 后即可使用（<code>文档摄取</code> 无需联网）。</p>
+</div>
+{% endif %}
 
-  <!-- Live log + result -->
-  <div class="lg:col-span-8 space-y-gutter">
-    <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
-      <div class="flex items-center justify-between mb-md">
-        <div class="flex items-center gap-sm">
-          <span class="material-symbols-outlined text-secondary">terminal</span>
-          <h2 class="font-headline-md text-headline-md text-on-surface">运行日志（实时）</h2>
-        </div>
-        <span id="run-status" class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">未选择运行</span>
-      </div>
-      <div id="agent-log" class="bg-inverse-surface rounded-lg p-md font-body-sm text-body-sm leading-6 min-h-[180px] max-h-[360px] overflow-y-auto" style="font-family: ui-monospace,'Cascadia Mono',monospace;">
-        <div class="text-inverse-on-surface/50">选择或启动一个工作流后，这里将实时显示智能体的每一步操作。</div>
-      </div>
-      <div id="run-meta" class="mt-sm font-body-sm text-body-sm text-on-surface-variant"></div>
-    </div>
+<!-- Recent activity across all workflows -->
+{% include "_agent_console.html" %}
 
-    <!-- Result -->
-    <div id="result-card" class="hidden bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
-      <h2 class="font-headline-md text-headline-md text-on-surface mb-md">运行结果</h2>
-      <div id="agent-result" class="prose-report text-on-surface-variant max-h-[480px] overflow-y-auto"></div>
-    </div>
-
-    <!-- Pending facts review -->
-    <div id="facts-card" class="hidden bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
-      <div class="px-lg py-md border-b border-outline-variant/30 flex items-center gap-sm">
-        <span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings:'FILL' 1;">how_to_reg</span>
-        <h2 class="font-headline-md text-headline-md text-on-surface">信息确认队列（真实性核查）</h2>
-      </div>
-      <div id="facts-list" class="divide-y divide-outline-variant/30 max-h-[420px] overflow-y-auto"></div>
-    </div>
-  </div>
-</section>
-
-{% endblock %}
-{% block scripts %}
-<script>
-(function () {
-  let currentRun = null;
-  let pollTimer = null;
-  const NODE_COLOR = {核查: "#f0c03e", 应用: "#a1d1fe"};
-
-  async function loadFiles() {
-    try {
-      const json = await (await fetch("/api/agent/files")).json();
-      const sel = document.getElementById("ingest-file");
-      sel.innerHTML = json.files.map((f) => `<option value="${f}">${f}</option>`).join("")
-        || '<option value="">（项目根目录无 pptx/pdf）</option>';
-    } catch (e) {}
-  }
-
-  window.agentStart = async function (params) {
-    if (params.workflow === "research" && !params.brand) { alert("请输入品牌名"); return; }
-    try {
-      const res = await fetch("/api/agent/start", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(params),
-      });
-      const json = await res.json();
-      if (json.error) { alert(json.error); return; }
-      selectRun(json.run_id);
-      loadRuns();
-    } catch (e) { alert("启动失败：" + e.message); }
-  };
-
-  window.loadRuns = async function () {
-    const json = await (await fetch("/api/agent/runs")).json();
-    const list = document.getElementById("run-list");
-    if (!json.runs.length) {
-      list.innerHTML = '<p class="px-lg py-md text-body-sm" style="color:#73777f">暂无运行记录。</p>';
-      return;
-    }
-    const wfName = {scan: "机会扫描", ingest: "文档摄取", research: "品牌深挖", discover: "竞品发现"};
-    const stColor = {running: "#c89c15", done: "#1b5e20", failed: "#93000a"};
-    list.innerHTML = json.runs.map((r) =>
-      `<div onclick="selectRun(${r.id})" class="px-lg py-sm cursor-pointer hover:bg-[#f3f4f5] ${currentRun === r.id ? "bg-[#e7f0fa]" : ""}">
-         <div class="flex items-center justify-between">
-           <span class="text-sm font-medium" style="color:#191c1d">#${r.id} ${wfName[r.workflow] || r.workflow}</span>
-           <span class="text-xs font-semibold" style="color:${stColor[r.status] || "#43474e"}">${r.status}</span>
-         </div>
-         <div class="text-xs mt-0.5 truncate" style="color:#73777f">${r.goal} · ¥${r.cost_cny}${r.facts_pending ? " · 待审 " + r.facts_pending : ""}</div>
-       </div>`).join("");
-  };
-
-  let stream = null;   // active EventSource (SSE)
-
-  window.selectRun = function (id) {
-    currentRun = id;
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    if (stream) { stream.close(); stream = null; }
-    poll().then((run) => {
-      if (run && run.status === "running") openStream(id);
-    });
-  };
-
-  function stepLine(s) {
-    return `<div><span style="color:rgba(240,241,242,.45)">${s.ts}</span> <span style="color:${NODE_COLOR[s.node] || "#9ccbf8"}">[${s.node}]</span> <span style="color:#f0f1f2">${s.message}</span>${s.detail ? ` <span style="color:rgba(240,241,242,.4)">— ${s.detail}</span>` : ""}</div>`;
-  }
-
-  function setStatusChip(status) {
-    const st = document.getElementById("run-status");
-    st.textContent = `#${currentRun} · ${status}` + (stream ? " · SSE" : "");
-    st.style.background = status === "running" ? "#ffdf95" : (status === "done" ? "#c8e6c9" : "#ffdad6");
-  }
-
-  function setMeta(run) {
-    document.getElementById("run-meta").textContent =
-      `迭代 ${run.iterations} · tokens ${run.tokens_in}/${run.tokens_out} · 成本 ≈¥${run.cost_cny}` + (run.error ? ` · 错误：${run.error}` : "");
-  }
-
-  function openStream(id) {
-    if (!window.EventSource) {           // ancient browser → fall back to polling
-      pollTimer = setInterval(poll, 2000);
-      return;
-    }
-    stream = new EventSource(`/api/agent/runs/${id}/stream`);
-    const log = document.getElementById("agent-log");
-    stream.addEventListener("step", (e) => {
-      if (log.firstChild && log.firstChild.dataset && log.firstChild.dataset.placeholder) log.innerHTML = "";
-      log.insertAdjacentHTML("beforeend", stepLine(JSON.parse(e.data)));
-      log.scrollTop = log.scrollHeight;
-    });
-    stream.addEventListener("status", (e) => {
-      const run = JSON.parse(e.data);
-      setStatusChip(run.status);
-      setMeta(run);
-    });
-    stream.addEventListener("done", () => {
-      stream.close(); stream = null;
-      poll();                             // final render: result markdown + facts queue
-      loadRuns();
-    });
-    stream.onerror = () => {              // connection lost → degrade to polling
-      if (stream) { stream.close(); stream = null; }
-      if (!pollTimer) pollTimer = setInterval(poll, 2000);
-    };
-    setStatusChip("running");
-  }
-
-  async function poll() {
-    if (!currentRun) return null;
-    const json = await (await fetch("/api/agent/runs/" + currentRun)).json();
-    if (json.error) return null;
-    const run = json.run;
-    setStatusChip(run.status);
-
-    const log = document.getElementById("agent-log");
-    log.innerHTML = json.steps.map(stepLine).join("")
-      || '<div data-placeholder="1" style="color:rgba(240,241,242,.5)">等待第一条日志…</div>';
-    log.scrollTop = log.scrollHeight;
-    setMeta(run);
-
-    const resultCard = document.getElementById("result-card");
-    if (run.result_md) {
-      resultCard.classList.remove("hidden");
-      document.getElementById("agent-result").innerHTML = window.marked ? marked.parse(run.result_md) : run.result_md;
-    } else resultCard.classList.add("hidden");
-
-    const factsCard = document.getElementById("facts-card");
-    if (json.facts.length) {
-      factsCard.classList.remove("hidden");
-      const stChip = {pending: ["待确认", "#ffdf95", "#251a00"], verified: ["自动通过", "#c8e6c9", "#1b5e20"],
-                      applied: ["已采纳", "#cde5ff", "#104a71"], rejected: ["已驳回", "#ffdad6", "#93000a"]};
-      document.getElementById("facts-list").innerHTML = json.facts.map((f) => {
-        const [label, bg, fg] = stChip[f.status] || [f.status, "#edeeef", "#43474e"];
-        const srcs = (f.sources || []).map((s) => s.startsWith("http")
-          ? `<a href="${s}" target="_blank" class="underline">${s.slice(0, 60)}</a>` : s).join("、");
-        const actions = f.status === "pending"
-          ? `<div class="flex gap-2 mt-1">
-               <button onclick="reviewFact(${f.id}, true)" class="px-2 py-1 rounded text-xs font-semibold" style="background:#123a63;color:#fff">采纳</button>
-               <button onclick="reviewFact(${f.id}, false)" class="px-2 py-1 rounded text-xs font-semibold" style="background:#ffdad6;color:#93000a">驳回</button>
-             </div>` : (f.review_note ? `<div class="text-xs mt-1" style="color:#73777f">${f.review_note}</div>` : "");
-        return `<div class="px-lg py-sm">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="text-sm" style="color:#191c1d">${f.claim}</div>
-                    <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold whitespace-nowrap" style="background:${bg};color:${fg}">${label}</span>
-                  </div>
-                  <div class="text-xs mt-0.5" style="color:#73777f">置信 ${f.confidence} · 来源：${srcs || "—"}</div>
-                  ${actions}
-                </div>`;
-      }).join("");
-    } else factsCard.classList.add("hidden");
-
-    if (run.status !== "running" && pollTimer) { clearInterval(pollTimer); pollTimer = null; loadRuns(); }
-    return run;
-  }
-
-  window.reviewFact = async function (id, accept) {
-    const note = accept ? "" : (prompt("驳回原因（可选）：") || "");
-    const res = await fetch(`/api/agent/facts/${id}/review`, {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({accept, note}),
-    });
-    const json = await res.json();
-    if (json.error) alert(json.error);
-    poll();
-  };
-
-  loadFiles();
-  loadRuns();
-})();
-</script>
 {% endblock %}

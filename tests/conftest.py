@@ -21,6 +21,14 @@ def settings(tmp_path: Path) -> Settings:
         data_dir=tmp_path / "data",
         db_url="",  # -> sqlite inside data_dir
         sources_file=tmp_path / "sources.yaml",
+        # Force offline isolation: ignore any real creds in the developer's .env so
+        # tests never hit the network (search/email/JD are opt-in per test via mocks).
+        search_provider="none",
+        search_api_key="",
+        email_user="",
+        email_password="",
+        jd_union_app_key="",
+        jd_union_app_secret="",
     )
     s.ensure_dirs()
     yield s

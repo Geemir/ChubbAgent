@@ -13,7 +13,8 @@ from chubb_ci.analytics.refresh import build_comparisons
 from chubb_ci.config.settings import Settings
 from chubb_ci.config.sources import load_sources
 from chubb_ci.normalize import price_per_kg, price_per_l
-from chubb_ci.schemas.models import DiffEvent, EventType, Insight, ProductRecord
+from chubb_ci.analytics.head_to_head import compare_pair
+from chubb_ci.schemas.models import DiffEvent, EventType, Insight, OwnProduct, ProductRecord
 from chubb_ci.storage.repositories import Repository
 
 _INSIGHT_LABEL = {
@@ -43,6 +44,24 @@ def _safe(fn):
         return fn()
     except Exception:  # noqa: BLE001
         return "—"
+
+
+def _channel_of(p) -> str:
+    """Channel for a product record, falling back to its source_name prefix."""
+    if getattr(p, "channel", None):
+        return p.channel
+    src = p.source_name or ""
+    if src.startswith("pptx-"):
+        return "分析报告"
+    if "suning" in src:
+        return "苏宁"
+    if "jd" in src:
+        return "京东"
+    if "tmall" in src:
+        return "天猫"
+    if src.startswith("agent-"):
+        return "智能体"
+    return "官网" if src else "—"
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -88,6 +107,107 @@ def _time_ago(dt: datetime | None) -> str:
     return "昨天" if days == 1 else f"{days} 天前"
 
 
+def _benchmark_calcs(own, comp, h) -> list[dict]:
+    """Step-by-step calculation rows for one 集宝↔竞品 comparison (formulas shown)."""
+    def money(v):
+        return f"¥{v:,.0f}" if v is not None else "—"
+
+    rows: list[dict] = []
+
+    # 价格差 %
+    if own.price and comp.price:
+        rows.append({
+            "label": "价格差", "unit": "%",
+            "formula": f"(集宝 {money(own.price)} − 竞品 {money(comp.price)}) ÷ 竞品 {money(comp.price)} × 100",
+            "result": f"{h.price_diff_pct:+.1f}%",
+            "hint": ("集宝定价高于竞品" if h.price_diff_pct > 0 else
+                     "两者价格持平" if h.price_diff_pct == 0 else "集宝定价低于竞品"),
+            "tone": "up" if h.price_diff_pct > 0 else ("neutral" if h.price_diff_pct == 0 else "down"),
+        })
+    else:
+        rows.append({"label": "价格差", "formula": "缺少价格数据", "result": "—", "tone": "muted"})
+
+    # 容积差 %
+    if own.capacity_l and comp.capacity_l:
+        rows.append({
+            "label": "容积差", "unit": "%",
+            "formula": f"(集宝 {own.capacity_l:g}L − 竞品 {comp.capacity_l:g}L) ÷ 竞品 {comp.capacity_l:g}L × 100",
+            "result": f"{h.volume_diff_pct:+.1f}%",
+            "hint": "集宝容积更大" if (h.volume_diff_pct or 0) > 0 else "竞品容积更大或相当",
+            "tone": "up" if (h.volume_diff_pct or 0) > 0 else "neutral",
+        })
+    else:
+        rows.append({"label": "容积差", "formula": "缺少容积数据", "result": "—", "tone": "muted"})
+
+    # 元/升 (each side = 价 ÷ 容积)
+    if h.own_price_per_l is not None:
+        rows.append({"label": "集宝 元/升",
+                     "formula": f"{money(own.price)} ÷ {own.capacity_l:g}L",
+                     "result": f"{h.own_price_per_l:g}", "tone": "neutral"})
+    if h.comp_price_per_l is not None:
+        rows.append({"label": "竞品 元/升",
+                     "formula": f"{money(comp.price)} ÷ {comp.capacity_l:g}L",
+                     "result": f"{h.comp_price_per_l:g}", "tone": "neutral"})
+
+    # 性价比指数 = 竞品元升 ÷ 集宝元升 (>1 → 集宝单位成本更优)
+    if h.vfm_index is not None:
+        good = h.vfm_index > 1
+        rows.append({
+            "label": "性价比指数", "unit": "",
+            "formula": f"竞品元/升 {h.comp_price_per_l:g} ÷ 集宝元/升 {h.own_price_per_l:g}",
+            "result": f"{h.vfm_index:g}",
+            "hint": "＞1：集宝单位容量成本更低（性价比更优）" if good else "≤1：竞品单位容量成本更低",
+            "tone": "up" if good else "down",
+        })
+
+    # 元/公斤
+    if h.own_price_per_kg is not None:
+        rows.append({"label": "集宝 元/公斤",
+                     "formula": f"{money(own.price)} ÷ {own.weight_kg:g}kg",
+                     "result": f"{h.own_price_per_kg:g}", "tone": "neutral"})
+    if h.comp_price_per_kg is not None:
+        rows.append({"label": "竞品 元/公斤",
+                     "formula": f"{money(comp.price)} ÷ {comp.weight_kg:g}kg",
+                     "result": f"{h.comp_price_per_kg:g}", "tone": "neutral"})
+
+    # 周期差 (天) — 负值 = 集宝物流优势
+    if h.lead_delta is not None:
+        adv = h.lead_delta < 0
+        rows.append({
+            "label": "交货周期差", "unit": "天",
+            "formula": f"集宝 {h.own_lead_days or 0} 天 − 竞品 {h.comp_lead_days} 天",
+            "result": f"{h.lead_delta:+d} 天",
+            "hint": "集宝交货更快（现货物流优势）" if adv else
+                    ("两者交期相当" if h.lead_delta == 0 else "竞品交货更快"),
+            "tone": "up" if adv else ("neutral" if h.lead_delta == 0 else "down"),
+        })
+
+    # 防盗等级分
+    if own.security_score is not None or comp.security_score is not None:
+        os_, cs = own.security_score, comp.security_score
+        hint = "—"
+        tone = "neutral"
+        if os_ is not None and cs is not None:
+            hint = ("集宝防护等级更高，支撑溢价论据" if os_ > cs else
+                    "两者防护等级相当" if os_ == cs else "竞品防护等级更高")
+            tone = "up" if os_ > cs else ("neutral" if os_ == cs else "down")
+        rows.append({
+            "label": "防盗等级分", "unit": "",
+            "formula": f"集宝 {os_ if os_ is not None else '—'} ｜ 竞品 {cs if cs is not None else '—'}",
+            "result": (f"{os_}" if os_ is not None else "—") + " vs " + (f"{cs}" if cs is not None else "—"),
+            "hint": hint, "tone": tone,
+        })
+    return rows
+
+
+def _dims_str(rec) -> str | None:
+    """'宽×深×高' in mm when all three dimensions are known, else None."""
+    w, d, h = rec.width_mm, rec.depth_mm, rec.height_mm
+    if w and d and h:
+        return f"{w:g}×{d:g}×{h:g}"
+    return None
+
+
 def _feed_summary(e: DiffEvent) -> str:
     label = _EVENT_LABEL.get(e.event_type, e.event_type)
     if e.event_type == EventType.PRICE_CHANGE.value:
@@ -123,6 +243,7 @@ class DashboardService:
         latest = _latest_per_product(products)
         companies = {p.company for p in latest.values() if p.company}
         active_promos = sum(1 for p in latest.values() if _has_promo(p))
+        channels = {_channel_of(p) for p in latest.values() if _channel_of(p)}
         today_start = _now() - timedelta(hours=24)
         changes_today = len(self.repo.events_between(today_start, _now()))
         return {
@@ -130,6 +251,7 @@ class DashboardService:
             "products_tracked": len(latest),
             "changes_today": changes_today,
             "active_promotions": active_promos,
+            "channels_covered": len(channels),
             "newly_discovered": 0,  # Phase 2 (discovery agent)
         }
 
@@ -306,9 +428,11 @@ class DashboardService:
             if company:
                 companies.add(company)
             rows.append({
+                "id": cur.id,
                 "product_name": cur.product_name,
                 "company": company,
                 "category": cur.category or "—",
+                "series": cur.series,
                 "price": cur.price,
                 "prev_price": prev.price if prev else None,
                 "diff_pct": diff_pct,
@@ -316,12 +440,19 @@ class DashboardService:
                 "gb_grade": cur.gb_grade,
                 "capacity_l": cur.capacity_l,
                 "weight_kg": cur.weight_kg,
+                "width_mm": cur.width_mm,
+                "depth_mm": cur.depth_mm,
+                "height_mm": cur.height_mm,
                 "fire_hours": cur.fire_hours,
                 "security_score": cur.security_score,
                 "price_per_l": price_per_l(cur.price, cur.capacity_l),
                 "price_per_kg": price_per_kg(cur.price, cur.weight_kg),
                 "lead_time_days": cur.lead_time_days,
+                "sales_volume": cur.sales_volume,
                 "status_label": cur.status_label,
+                "channel": cur.channel or _channel_of(cur),
+                "image_url": cur.image_url,
+                "product_url": cur.product_url,
                 "last_updated": _time_ago(cur.crawl_time),
             })
         rows.sort(key=lambda r: (r["company"], r["product_name"]))
@@ -329,7 +460,106 @@ class DashboardService:
             "rows": rows,
             "categories": sorted(categories),
             "companies": sorted(companies),
+            "channels": sorted({r["channel"] for r in rows if r["channel"]}),
         }
+
+    # ------------------------------------------------- product detail
+    def product_detail(self, pid: int) -> dict | None:
+        """Full record for one product + its price history (same company+key over time)."""
+        rec = self.repo.session.get(ProductRecord, pid)
+        if rec is None:
+            return None
+        history = [
+            r for r in self.repo.all_products()
+            if r.company == rec.company and r.product_key == rec.product_key
+        ]
+        history.sort(key=lambda r: _aware(r.crawl_time))
+        latest = history[-1] if history else rec
+        # A spec is "missing" if unknown — drives the agent enrichment hint on the page.
+        spec_fields = ("capacity_l", "width_mm", "depth_mm", "height_mm", "weight_kg",
+                       "fire_rating", "gb_grade", "euro_grade", "lock_type")
+        missing = [f for f in spec_fields if getattr(latest, f, None) in (None, "")]
+        price_history = [
+            {"date": _aware(r.crawl_time).date().isoformat(), "price": r.price}
+            for r in history if r.price is not None
+        ]
+        specs = [
+            ("型号编码", latest.model_code), ("系列", latest.series),
+            ("品类", latest.category), ("容积 (L)", latest.capacity_l),
+            ("外形尺寸 (mm)", _dims_str(latest)),
+            ("净重 (kg)", latest.weight_kg), ("防火", latest.fire_rating),
+            ("防火时长 (h)", latest.fire_hours), ("防盗等级", latest.gb_grade or latest.euro_grade),
+            ("防盗等级分", latest.security_score), ("锁具", latest.lock_type),
+            ("元/升", price_per_l(latest.price, latest.capacity_l)),
+            ("元/公斤", price_per_kg(latest.price, latest.weight_kg)),
+            ("交货周期 (天)", latest.lead_time_days), ("月销量", latest.sales_volume),
+        ]
+        return {
+            "id": latest.id,
+            "product_name": latest.product_name,
+            "company": latest.company,
+            "channel": latest.channel or _channel_of(latest),
+            "price": latest.price,
+            "promotion": latest.promotion,
+            "availability": latest.availability,
+            "image_url": latest.image_url,
+            "product_url": latest.product_url,
+            "source_url": latest.source_url,
+            "can_enrich": bool(latest.product_url or latest.source_url),
+            "source_name": latest.source_name,
+            "last_updated": _time_ago(latest.crawl_time),
+            "key_features": list(latest.key_features or []),
+            "specs": [(k, v) for k, v in specs if v not in (None, "", [])],
+            "missing_specs": missing,
+            "price_history": price_history,
+        }
+
+    # ------------------------------------------------- price comparison
+    def price_comparison(self) -> dict:
+        """Group the same SKU across platforms (by model code) → per-platform prices.
+
+        JD/Tmall/苏宁 title the same safe differently but share a model code; grouping by
+        (company, model_code) puts their prices side by side. Products without a code
+        (系列 names) group by their normalized key (single row).
+        """
+        latest = _latest_per_product(self.repo.all_products())
+        groups: dict[tuple[str, str], list[ProductRecord]] = defaultdict(list)
+        for p in latest.values():
+            if not p.price:
+                continue
+            key = (p.company, p.model_code or p.product_key)
+            groups[key].append(p)
+
+        channels_seen: set[str] = set()
+        rows = []
+        for (company, _key), items in groups.items():
+            by_ch: dict[str, dict] = {}
+            for p in items:
+                ch = p.channel or _channel_of(p)
+                channels_seen.add(ch)
+                if ch not in by_ch or p.price < by_ch[ch]["price"]:
+                    by_ch[ch] = {"price": p.price, "url": p.product_url,
+                                 "name": p.product_name}
+            prices = [v["price"] for v in by_ch.values()]
+            lo, hi = min(prices), max(prices)
+            rows.append({
+                "company": company,
+                "model": items[0].model_code or "—",
+                "name": items[0].product_name,
+                "image_url": next((p.image_url for p in items if p.image_url), None),
+                "platforms": by_ch,
+                "n_platforms": len(by_ch),
+                "min_price": lo, "max_price": hi,
+                "spread_pct": round((hi - lo) / lo * 100, 1) if lo and hi > lo else 0.0,
+            })
+        rows.sort(key=lambda r: (-r["n_platforms"], -r["spread_pct"], r["company"]))
+        # shopping platforms first in a stable column order
+        order = ["京东", "天猫", "苏宁", "拼多多", "官网", "分析报告"]
+        chans = [c for c in order if c in channels_seen]
+        chans += sorted(channels_seen - set(chans))
+        multi = sum(1 for r in rows if r["n_platforms"] > 1)
+        return {"rows": rows, "channels": chans, "multi_count": multi,
+                "total": len(rows)}
 
     # ------------------------------------------------- settings / status
     def system_status(self) -> dict:
@@ -341,17 +571,10 @@ class DashboardService:
         latest = _latest_per_product(products)
         priced = sum(1 for p in latest.values() if p.price)
 
-        # channel coverage (real data lands under 官网/苏宁/分析报告/…)
+        # channel coverage (real data lands under 官网/苏宁/京东/天猫/分析报告/…)
         ch_counts: dict[str, int] = defaultdict(int)
-        for snap_company_key, p in latest.items():
-            ch = getattr(p, "channel", None)
-            # ProductRecord has no channel; derive from source_name prefix.
-            src = (p.source_name or "")
-            label = ("分析报告" if src.startswith("pptx-") else
-                     "苏宁" if "suning" in src else
-                     "智能体" if src.startswith("agent-") else
-                     "官网" if src else "—")
-            ch_counts[label] += 1
+        for p in latest.values():
+            ch_counts[_channel_of(p)] += 1
 
         try:
             sources = load_sources(settings.sources_path)
@@ -439,6 +662,50 @@ class DashboardService:
             "rows": rows,
             "own_count": len(own),
             "pair_count": len(rows),
+        }
+
+    # ------------------------------------------- interactive 1-vs-1 对标
+    def benchmark_lists(self) -> dict:
+        """Own (集宝) products + competitor products for the two side-by-side pickers."""
+        own = [{
+            "id": p.id, "name": p.product_name, "series": p.series,
+            "price": p.price, "capacity_l": p.capacity_l,
+            "security_score": p.security_score,
+        } for p in sorted(self.repo.own_products(), key=lambda p: p.product_name)]
+
+        comps = []
+        for p in _latest_per_product(self.repo.all_products()).values():
+            if _channel_of(p) in ("分析报告",) and p.price is None:
+                pass  # keep deck rows too; they may carry price/certs
+            comps.append({
+                "id": p.id, "name": p.product_name, "company": p.company,
+                "channel": p.channel or _channel_of(p), "price": p.price,
+                "capacity_l": p.capacity_l, "security_score": p.security_score,
+            })
+        comps.sort(key=lambda r: (r["company"], r["name"]))
+        return {
+            "own": own, "competitors": comps,
+            "companies": sorted({c["company"] for c in comps if c["company"]}),
+        }
+
+    def compare_detail(self, own_id: int, comp_id: int) -> dict | None:
+        """Compute one 集宝↔竞品 comparison with the full step-by-step calculation."""
+        own = self.repo.session.get(OwnProduct, own_id)
+        comp = self.repo.session.get(ProductRecord, comp_id)
+        if own is None or comp is None:
+            return None
+        h = compare_pair(own, comp)
+        return {
+            "own": {"name": own.product_name, "series": own.series, "price": own.price,
+                    "capacity_l": own.capacity_l, "weight_kg": own.weight_kg,
+                    "lead_time_days": own.lead_time_days, "security_score": own.security_score,
+                    "gb_grade": own.gb_grade or own.euro_grade},
+            "comp": {"name": comp.product_name, "company": comp.company, "price": comp.price,
+                     "capacity_l": comp.capacity_l, "weight_kg": comp.weight_kg,
+                     "lead_time_days": comp.lead_time_days, "security_score": comp.security_score,
+                     "gb_grade": comp.gb_grade or comp.euro_grade, "channel": comp.channel},
+            "summary": h.model_dump(),
+            "calcs": _benchmark_calcs(own, comp, h),
         }
 
     # ------------------------------------------------- market map page

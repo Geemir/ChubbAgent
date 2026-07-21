@@ -15,26 +15,22 @@ from chubb_ci.llm.factory import build_llm
 from chubb_ci.schemas.models import AgentRun, Brand, PendingFact, ProductRecord
 from chubb_ci.storage.db import session_scope
 
-WORKFLOWS = ("ingest", "scan", "research", "discover")
+WORKFLOWS = ("ingest", "research", "enrich", "sentiment")
 
 _BRAND_FIELDS = {"positioning", "competition_tier", "target_audience",
                  "market_scale", "supply_chain", "warranty"}
 
 
 def _execute(settings: Settings, run_id: int, workflow: str, params: dict,
-             llm: LLMClient | None = None) -> None:
+             llm: LLMClient | None = None, search=None) -> None:
     """Run one workflow inside its own session (thread-safe entrypoint)."""
     with session_scope(settings) as session:
         run = session.get(AgentRun, run_id)
         ctx = AgentContext(session, settings, run)
         llm = llm or build_llm(settings)
-        search = build_search(settings)
+        search = search if search is not None else build_search(settings)
         try:
-            if workflow == "scan":
-                from chubb_ci.agent.scan_flow import run_scan
-
-                run_scan(ctx, llm)
-            elif workflow == "ingest":
+            if workflow == "ingest":
                 from chubb_ci.agent.ingest_flow import run_ingest
 
                 run_ingest(ctx, llm, params["path"])
@@ -43,10 +39,14 @@ def _execute(settings: Settings, run_id: int, workflow: str, params: dict,
 
                 run_research(ctx, llm, search,
                              brand=params["brand"], url=params.get("url"))
-            elif workflow == "discover":
-                from chubb_ci.agent.research_flow import run_discovery
+            elif workflow == "enrich":
+                from chubb_ci.agent.enrich_flow import run_enrich
 
-                run_discovery(ctx, llm, search, goal=params.get("goal", "发现新竞品"))
+                run_enrich(ctx, llm, search, product_id=int(params["product_id"]))
+            elif workflow == "sentiment":
+                from chubb_ci.agent.sentiment_flow import run_sentiment
+
+                run_sentiment(ctx, llm, search, goal=params.get("goal", ""))
             else:
                 raise ValueError(f"unknown workflow: {workflow}")
         except Exception as exc:  # noqa: BLE001 - a failed run must never crash the app
@@ -59,21 +59,23 @@ def _execute(settings: Settings, run_id: int, workflow: str, params: dict,
 
 def start_workflow(
     settings: Settings, workflow: str, params: dict, *,
-    background: bool = True, llm: LLMClient | None = None,
+    background: bool = True, llm: LLMClient | None = None, search=None,
 ) -> int:
     """Create a run and execute it (in a daemon thread when ``background``)."""
     if workflow not in WORKFLOWS:
         raise ValueError(f"workflow must be one of {WORKFLOWS}")
-    goal = params.get("goal") or params.get("brand") or params.get("path") or workflow
+    goal = (params.get("goal") or params.get("brand") or params.get("path")
+            or (f"product:{params['product_id']}" if params.get("product_id") else workflow))
     with session_scope(settings) as session:
         run = create_run(session, workflow, str(goal))
         run_id = run.id
     if background:
         t = threading.Thread(target=_execute, args=(settings, run_id, workflow, params),
-                             kwargs={"llm": llm}, daemon=True, name=f"agent-{run_id}")
+                             kwargs={"llm": llm, "search": search}, daemon=True,
+                             name=f"agent-{run_id}")
         t.start()
     else:
-        _execute(settings, run_id, workflow, params, llm=llm)
+        _execute(settings, run_id, workflow, params, llm=llm, search=search)
     return run_id
 
 
@@ -105,8 +107,12 @@ def review_fact(session: Session, fact_id: int, *, accept: bool, note: str = "")
 
 def _apply_fact(session: Session, fact: PendingFact) -> str:
     """Write an accepted fact into the right table. Returns a description."""
+    from chubb_ci.agent.product_fields import (
+        ENRICHABLE_PRODUCT_FIELDS,
+        deserialize_fact_value,
+        refresh_computed_fields,
+    )
     from chubb_ci.diff.matching import normalize_product_key
-    from chubb_ci.normalize import fire_hours, security_score
 
     # Product fact: subject = "{brand}|{product_name}"
     if "|" in fact.subject:
@@ -119,15 +125,14 @@ def _apply_fact(session: Session, fact: PendingFact) -> str:
         rec = session.exec(stmt).first()
         if rec is None:
             return f"未找到产品记录 {fact.subject}（仅标记采纳）"
-        value: object = fact.value
-        if fact.field == "price":
-            try:
-                value = float(str(fact.value).replace(",", ""))
-            except ValueError:
-                return "价格无法解析（仅标记采纳）"
+        if fact.field not in ENRICHABLE_PRODUCT_FIELDS:
+            return f"不支持的产品字段 {fact.field}（仅标记采纳）"
+        try:
+            value = deserialize_fact_value(fact.field, fact.value)
+        except (TypeError, ValueError):
+            return f"{fact.field} 无法解析（仅标记采纳）"
         setattr(rec, fact.field, value)
-        rec.fire_hours = fire_hours(rec.fire_rating)
-        rec.security_score = security_score(rec.gb_grade, rec.euro_grade)
+        refresh_computed_fields(rec)
         session.add(rec)
         session.commit()
         return f"已更新产品 {product} 的 {fact.field}"

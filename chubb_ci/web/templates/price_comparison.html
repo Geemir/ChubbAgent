@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}多平台比价{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-md">
+  <div>
+    <h1 class="font-display-lg text-display-lg text-on-surface">多平台比价</h1>
+    <p class="text-body-lg text-on-surface-variant mt-sm">同一型号保险柜在京东 / 天猫 / 苏宁等渠道的价格对比（按型号自动匹配）。</p>
+  </div>
+  <div class="flex items-center gap-md">
+    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
+      <div class="font-display-lg text-display-lg text-tertiary-fixed-dim tabular-nums leading-none">{{ multi_count }}</div>
+      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">多平台在售</div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-lg px-md py-sm border border-outline-variant/30 text-center">
+      <div class="font-display-lg text-display-lg text-on-surface tabular-nums leading-none">{{ total }}</div>
+      <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-xs">型号总数</div>
+    </div>
+  </div>
+</div>
+
+{% if multi_count == 0 %}
+<div class="bg-tertiary-fixed/20 rounded-xl p-md border border-tertiary-fixed-dim/40 flex items-start gap-sm">
+  <span class="material-symbols-outlined text-tertiary-fixed-dim">info</span>
+  <p class="font-body-md text-on-surface">当前仅有单一渠道（苏宁）价格。登录京东 / 天猫后（<code>chubb-ci login jd</code>）启用对应抓取源，同型号将自动并排比价。下表已按型号聚合，随时可扩展。</p>
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-body-md">
+      <thead>
+        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+          <th class="text-center px-sm py-md">图片</th>
+          <th class="text-left px-md py-md">品牌 / 型号</th>
+          {% for ch in channels %}<th class="text-right px-md py-md">{{ ch }}</th>{% endfor %}
+          <th class="text-right px-md py-md">最低价</th>
+          <th class="text-right px-md py-md">价差</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="border-b border-outline-variant/40 {% if r.n_platforms > 1 %}bg-secondary-fixed/25{% endif %} hover:bg-secondary-fixed/40 transition-colors">
+          <td class="px-sm py-sm text-center">
+            {% if r.image_url %}<img loading="lazy" src="/api/img?url={{ r.image_url|urlencode }}" class="w-11 h-11 object-contain rounded bg-surface-container-low mx-auto" onerror="this.outerHTML='<span class=\'material-symbols-outlined text-outline\'>safe</span>'"/>
+            {% else %}<span class="material-symbols-outlined text-outline" style="font-size:20px;">safe</span>{% endif %}
+          </td>
+          <td class="px-md py-sm">
+            <div class="text-on-surface font-medium">{{ r.company }}</div>
+            <div class="font-body-sm text-body-sm text-on-surface-variant">{{ r.model }}{% if r.n_platforms > 1 %} <span class="ml-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">{{ r.n_platforms }} 平台</span>{% endif %}</div>
+          </td>
+          {% for ch in channels %}
+          <td class="px-md py-sm text-right tabular-nums">
+            {% if ch in r.platforms %}
+              {% set cell = r.platforms[ch] %}
+              {% set is_min = cell.price == r.min_price and r.n_platforms > 1 %}
+              {% if cell.url %}<a href="{{ cell.url }}" target="_blank" class="hover:underline {% if is_min %}text-secondary font-semibold{% else %}text-on-surface{% endif %}">¥{{ '{:,.0f}'.format(cell.price) }}</a>
+              {% else %}<span class="{% if is_min %}text-secondary font-semibold{% else %}text-on-surface{% endif %}">¥{{ '{:,.0f}'.format(cell.price) }}</span>{% endif %}
+            {% else %}<span class="text-on-surface-variant/40">—</span>{% endif %}
+          </td>
+          {% endfor %}
+          <td class="px-md py-sm text-right tabular-nums text-on-surface font-medium">¥{{ '{:,.0f}'.format(r.min_price) }}</td>
+          <td class="px-md py-sm text-right tabular-nums">
+            {% if r.spread_pct > 0 %}<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-md">{{ '%.0f'|format(r.spread_pct) }}%</span>
+            {% else %}<span class="text-on-surface-variant">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="bg-surface-container-lowest rounded-xl p-xl border border-outline-variant/30 text-center">
+  <span class="material-symbols-outlined text-outline" style="font-size:48px;">price_check</span>
+  <p class="text-on-surface-variant text-body-lg mt-md">暂无带价格的产品。运行 <code>chubb-ci load-real</code> 或电商抓取。</p>
+</div>
+{% endif %}
+
+{% endblock %}

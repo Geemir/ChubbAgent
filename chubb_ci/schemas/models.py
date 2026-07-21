@@ -86,6 +86,8 @@ class ExtractedProduct(BaseModel):
     lead_time_days: int | None = PydField(default=None, description="订货周期/交货期（天），若标注")
     sales_volume: int | None = PydField(default=None, description="销量/成交量数字（电商页面），若标注")
     status_label: str | None = PydField(default=None, description="页面标签：热卖/爆款/新品/限量 等")
+    image_url: str | None = PydField(default=None, description="产品主图 URL（若能确定）")
+    product_url: str | None = PydField(default=None, description="产品详情页 URL")
     source_url: str | None = PydField(default=None, description="该产品所在页面 URL")
 
     @field_validator("sales_volume", "lead_time_days", "price", "capacity_l",
@@ -161,9 +163,11 @@ class ProductRecord(SQLModel, table=True):
     run_id: int | None = Field(default=None, index=True)
     source_name: str = Field(default="", index=True)
     company: str = Field(default="", index=True)
+    channel: str = Field(default="", index=True)   # 官网/苏宁/京东/天猫/分析报告
 
     product_name: str = ""
     product_key: str = Field(default="", index=True)
+    model_code: str | None = Field(default=None, index=True)  # cross-platform match key
     series: str | None = None
     category: str | None = None
     price: float | None = None
@@ -185,6 +189,8 @@ class ProductRecord(SQLModel, table=True):
     lead_time_days: int | None = None
     sales_volume: int | None = None
     status_label: str | None = None
+    image_url: str | None = None
+    product_url: str | None = None
     source_url: str | None = None
     crawl_time: datetime = Field(default_factory=utcnow)
     # Computed by chubb_ci/normalize at ingest (never by the LLM).
@@ -298,10 +304,10 @@ class Report(SQLModel, table=True):
 
 
 class AgentRun(SQLModel, table=True):
-    """One execution of an agent workflow (ingest / scan / research / discover)."""
+    """One execution of an agent workflow (ingest / scan / research / enrich / discover)."""
 
     id: int | None = Field(default=None, primary_key=True)
-    workflow: str = ""                       # ingest | scan | research | discover
+    workflow: str = ""                       # ingest | scan | research | enrich | discover
     goal: str = ""                           # human-readable goal / parameters
     status: str = "running"                  # running | done | failed
     started_at: datetime = Field(default_factory=utcnow)
@@ -345,6 +351,21 @@ class PendingFact(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class EmailRecord(SQLModel, table=True):
+    """One processed subscription email (dedup by Message-ID; provenance for 邮件订阅)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    message_id: str = Field(default="", index=True, unique=True)
+    sender: str = ""                         # From header (display + address)
+    subject: str = ""
+    received_at: datetime | None = None      # Date header (parsed, best-effort)
+    processed_at: datetime = Field(default_factory=utcnow)
+    snapshot_id: int | None = Field(default=None, foreign_key="snapshot.id")
+    num_products: int = 0
+    status: str = "ok"                       # ok | empty | error
+    error: str | None = None
+
+
 # =========================================================================
 # Converters
 # =========================================================================
@@ -373,5 +394,7 @@ def record_to_extracted(rec: ProductRecord) -> ExtractedProduct:
         lead_time_days=rec.lead_time_days,
         sales_volume=rec.sales_volume,
         status_label=rec.status_label,
+        image_url=rec.image_url,
+        product_url=rec.product_url,
         source_url=rec.source_url,
     )

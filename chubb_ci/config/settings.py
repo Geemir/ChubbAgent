@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     request_timeout: int = 30
     rate_limit_delay: float = 2.0
     max_retries: int = 3
+    #: Run Playwright headless. JD/Tmall soft-block headless Chromium even with valid
+    #: cookies; set CHUBB_BROWSER_HEADLESS=false for manual JD/Tmall crawls on a desktop.
+    browser_headless: bool = True
     user_agent: str = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
@@ -82,6 +85,30 @@ class Settings(BaseSettings):
     agent_max_seconds: int = 600
     #: Verify-node confidence threshold: facts >= this auto-apply, below → human review.
     agent_verify_threshold: float = 0.8
+
+    # --- Marketplace crawling -------------------------------------------------
+    #: Max product detail pages to enrich (specs) per source per crawl (cost/anti-bot cap).
+    detail_enrich_max: int = 5
+    #: Optional external crawler microservice (ShilongLee-style) base URL; "" = disabled.
+    external_crawler_url: str = ""
+
+    # --- Email ingest (竞品促销邮件订阅) ---------------------------------------
+    #: IMAP mailbox that subscribes to competitor newsletters/promos. Recommended:
+    #: a dedicated 163.com box (use the IMAP 授权码 as the password, NOT the login
+    #: password; enable IMAP/SMTP in 163 settings first). Empty user = disabled.
+    email_imap_host: str = "imap.163.com"
+    email_imap_port: int = 993
+    email_user: str = ""
+    email_password: str = ""       # 163 授权码 / app password
+    email_folder: str = "INBOX"
+    #: Max messages to process per run (newest first; cost guard).
+    email_max_messages: int = 20
+
+    # --- JD Union (京东联盟开放平台, official price API) -----------------------
+    #: appkey/secret from union.jd.com/openplatform (导购媒体 registration).
+    #: Empty key = disabled; the client degrades gracefully.
+    jd_union_app_key: str = ""
+    jd_union_app_secret: str = ""
 
     # ---------------------------------------------------------------- helpers
     def _resolve(self, p: Path) -> Path:

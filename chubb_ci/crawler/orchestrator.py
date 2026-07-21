@@ -26,8 +26,16 @@ def make_fetcher(source: Source, settings: Settings) -> Fetcher:
     if source.fetcher is FetcherKind.LOCAL:
         return LocalFetcher()
     if source.fetcher is FetcherKind.BROWSER:
+        # Inject a saved logged-in session (JD/Tmall) when one exists for this site.
+        from chubb_ci.crawler.session import load_state_for
+
+        state = load_state_for(source.urls[0], settings) if source.urls else None
+        extra: dict = {}
+        if source.browser_wait_ms > 0:  # e.g. ZOL's JS anti-bot needs ~9s to resolve
+            extra["wait_after_load_ms"] = source.browser_wait_ms
         return BrowserFetcher(
-            user_agent=settings.user_agent, timeout=settings.request_timeout
+            user_agent=settings.user_agent, timeout=settings.request_timeout,
+            storage_state=state, headless=settings.browser_headless, **extra,
         )
     return StaticFetcher(
         user_agent=settings.user_agent,

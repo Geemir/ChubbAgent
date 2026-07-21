@@ -6,12 +6,15 @@ Run:  uv run chubb-ci dashboard         (or)  uvicorn chubb_ci.web.app:app
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
+import ipaddress
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -92,17 +95,100 @@ def competitor_profile(request: Request, name: str):
 @app.get("/benchmark", response_class=HTMLResponse)
 def benchmark(request: Request):
     with session_scope(get_settings()) as session:
-        ctx = _ctx(request, "benchmark", **_service(session).benchmark())
+        ctx = _ctx(request, "benchmark", **_service(session).benchmark_lists())
     return templates.TemplateResponse(request, "benchmark.html", ctx)
 
 
-@app.get("/market-map", response_class=HTMLResponse)
-def market_map(request: Request):
+@app.get("/api/benchmark/compare")
+def benchmark_compare(own_id: int, comp_id: int) -> JSONResponse:
+    with session_scope(get_settings()) as session:
+        detail = _service(session).compare_detail(own_id, comp_id)
+    if detail is None:
+        return JSONResponse({"error": "未找到所选产品"}, status_code=404)
+    return JSONResponse(detail)
+
+
+@app.post("/api/own-products")
+async def create_own_product(request: Request) -> JSONResponse:
+    """Manually add a 集宝 (own) product for benchmarking."""
+    from chubb_ci.diff.matching import normalize_product_key
+    from chubb_ci.normalize import fire_hours, security_score, volume_l
+    from chubb_ci.schemas.models import OwnProduct
+
+    body = await request.json()
+    name = (body.get("product_name") or "").strip()
+    if not name:
+        return JSONResponse({"error": "product_name 必填"}, status_code=400)
+
+    def num(key, cast=float):
+        v = body.get(key)
+        if v in (None, ""):
+            return None
+        try:
+            return cast(str(v).replace("¥", "").replace(",", "").strip())
+        except ValueError:
+            return None
+
+    rec = OwnProduct(
+        product_name=name, product_key=normalize_product_key(name),
+        series=(body.get("series") or "").strip() or None,
+        category=(body.get("category") or "保险柜").strip(),
+        price=num("price"), width_mm=num("width_mm"), depth_mm=num("depth_mm"),
+        height_mm=num("height_mm"), capacity_l=num("capacity_l"), weight_kg=num("weight_kg"),
+        fire_rating=(body.get("fire_rating") or "").strip() or None,
+        gb_grade=(body.get("gb_grade") or "").strip() or None,
+        lock_type=(body.get("lock_type") or "").strip() or None,
+        lead_time_days=int(num("lead_time_days", float) or 0),
+    )
+    rec.capacity_l = rec.capacity_l or volume_l(rec.width_mm, rec.depth_mm, rec.height_mm)
+    rec.fire_hours = fire_hours(rec.fire_rating)
+    rec.security_score = security_score(rec.gb_grade, rec.euro_grade)
+    with session_scope(get_settings()) as session:
+        session.add(rec)
+        session.flush()
+        pid = rec.id
+    return JSONResponse({"status": "ok", "id": pid})
+
+
+@app.delete("/api/own-products/{pid}")
+def delete_own_product(pid: int) -> JSONResponse:
+    from chubb_ci.schemas.models import OwnProduct
+
+    with session_scope(get_settings()) as session:
+        rec = session.get(OwnProduct, pid)
+        if rec is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        session.delete(rec)
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/market", response_class=HTMLResponse)
+def market(request: Request):
+    """市场情况 — merged 市场地图 + 价格变动 + 市场趋势 (tabbed sections)."""
     with session_scope(get_settings()) as session:
         svc = _service(session)
-        ctx = _ctx(request, "marketmap", map=svc.market_map(),
-                   leaderboard=svc.value_leaderboard())
-    return templates.TemplateResponse(request, "market_map.html", ctx)
+        ctx = _ctx(request, "market", map=svc.market_map(),
+                   leaderboard=svc.value_leaderboard(),
+                   pc=svc.price_changes(),
+                   trends=svc.market_trends())
+    return templates.TemplateResponse(request, "market.html", ctx)
+
+
+# Old bookmarks → the merged page.
+@app.get("/market-map")
+@app.get("/price-changes")
+@app.get("/market-trends")
+def _market_redirect():
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse("/market", status_code=301)
+
+
+@app.get("/price-comparison", response_class=HTMLResponse)
+def price_comparison(request: Request):
+    with session_scope(get_settings()) as session:
+        ctx = _ctx(request, "pricecmp", **_service(session).price_comparison())
+    return templates.TemplateResponse(request, "price_comparison.html", ctx)
 
 
 @app.get("/products", response_class=HTMLResponse)
@@ -112,30 +198,101 @@ def products(request: Request):
     return templates.TemplateResponse(request, "products.html", ctx)
 
 
-@app.get("/promotions", response_class=HTMLResponse)
-def promotions(request: Request):
+@app.get("/products/{pid}", response_class=HTMLResponse)
+def product_detail(request: Request, pid: int):
     with session_scope(get_settings()) as session:
-        ctx = _ctx(request, "promotions", **_service(session).promotions())
-    return templates.TemplateResponse(request, "promotions.html", ctx)
+        detail = _service(session).product_detail(pid)
+        if detail is None:
+            ctx = _ctx(request, "products", **_service(session).products())
+            return templates.TemplateResponse(request, "products.html", ctx)
+        ctx = _ctx(request, "products", **detail)
+    return templates.TemplateResponse(request, "product_detail.html", ctx)
 
 
-@app.get("/price-changes", response_class=HTMLResponse)
-def price_changes(request: Request):
-    with session_scope(get_settings()) as session:
-        ctx = _ctx(request, "price", **_service(session).price_changes())
-    return templates.TemplateResponse(request, "price_changes.html", ctx)
+@app.get("/ingest", response_class=HTMLResponse)
+def ingest_page(request: Request):
+    """手动录入 — paste text → LLM identifies the product → editable form → save."""
+    return templates.TemplateResponse(request, "ingest.html", _ctx(request, "products"))
 
 
-@app.get("/market-trends", response_class=HTMLResponse)
-def market_trends(request: Request):
-    with session_scope(get_settings()) as session:
-        ctx = _ctx(request, "trends", trends=_service(session).market_trends())
-    return templates.TemplateResponse(request, "market_trends.html", ctx)
+# Per-feature metadata drives the hub cards + each dedicated sub-page (title, icon,
+# whether it needs the web-search key, and step-by-step usage instructions).
+_AGENT_FEATURES: dict[str, dict] = {
+    "research": {
+        "key": "research", "title": "品牌深挖", "icon": "travel_explore",
+        "subtitle": "给定一个品牌，智能体联网检索、抓取并核查，把可信信息写入数据库。",
+        "needs_search": True,
+        "how": [
+            "输入要研究的竞品品牌名（如「盾牌 Dunpai」）。",
+            "可选：直接指定一个页面 URL —— 未配置搜索时必填，配置后作为优先来源。",
+            "智能体按 检索→抓取→抽取→真实性核查→评估 的闭环运行，全程有界（预算/轮次/时间上限）。",
+            "已核实的产品与字段自动入库；存疑信息进入下方「信息确认队列」等你 采纳/驳回。",
+        ],
+        "note": "只有多来源互证/通过一致性校验的字段才自动写库，其余一律人工确认，绝不盲信。",
+    },
+    "enrich": {
+        "key": "enrich", "title": "竞品信息自动化搜集", "icon": "manage_search",
+        "subtitle": "给定一个产品，智能体浏览它已保存的链接并联网佐证，只补齐当前空缺的参数。",
+        "needs_search": True,
+        "how": [
+            "在「产品情报」找到目标产品，复制其 ID 填入下方（或从产品详情页点「自动搜集参数」直接触发）。",
+            "智能体只浏览该产品已保存的 商品链接/来源链接，并按型号联网检索佐证。",
+            "仅填补当前为空的字段（尺寸/重量/容积/认证等），已有数据绝不被覆盖。",
+            "多源一致的值自动写入；低置信度值进入人工确认队列。",
+        ],
+        "note": "适合把苏宁/官网抓到、但规格不全的产品补全参数，供对标与比价使用。",
+    },
+    "ingest": {
+        "key": "ingest", "title": "文档摄取", "icon": "upload_file",
+        "subtitle": "上传竞品分析 PPT 或产品手册 PDF，自动抽取其中的产品表与品牌档案。",
+        "needs_search": False,
+        "how": [
+            "上传一个 .pptx 或 .pdf 文件（如市场部的竞品分析报告）。",
+            "文档中的产品价格/销量/认证表格被确定性解析并入库（分析报告渠道）。",
+            "LLM 从文中抽取的品牌定位/供应链等档案声明会进入人工确认队列。",
+            "也可直接选择项目根目录下已有的文档。",
+        ],
+        "note": "结构化表格走确定性解析（不经 LLM），只有主观档案声明才需人工确认。",
+    },
+    "sentiment": {
+        "key": "sentiment", "title": "舆情分析", "icon": "reviews",
+        "subtitle": "联网检索关于 ChubbSafes/集宝（或任意话题）的内容，分类情感并生成舆情报告。",
+        "needs_search": True,
+        "how": [
+            "输入要分析的品牌或话题（默认「集宝 ChubbSafes 保险柜」）。",
+            "智能体从口碑/评价/新闻/投诉多个角度联网检索。",
+            "对每条结果逐一判定 正面/中性/负面，并按来源确定性统计分布。",
+            "生成带来源引用的中文舆情分析报告（概览/正面/风险/竞品对比/建议）。",
+        ],
+        "note": "所有结论均标注来源序号；情感分布数字来自逐条来源的分类统计，可追溯。",
+    },
+}
 
 
 @app.get("/research-agent", response_class=HTMLResponse)
 def research_agent(request: Request):
-    return templates.TemplateResponse(request, "research_agent.html", _ctx(request, "agent"))
+    """Agent hub: feature cards + recent runs (each feature has its own sub-page)."""
+    search_on = build_search_available()
+    ctx = _ctx(request, "agent", features=list(_AGENT_FEATURES.values()),
+               search_on=search_on)
+    return templates.TemplateResponse(request, "research_agent.html", ctx)
+
+
+@app.get("/research-agent/{feature}", response_class=HTMLResponse)
+def research_agent_feature(request: Request, feature: str):
+    meta = _AGENT_FEATURES.get(feature)
+    if meta is None:
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse("/research-agent", status_code=302)
+    ctx = _ctx(request, "agent", feature=meta, search_on=build_search_available())
+    return templates.TemplateResponse(request, "agent_feature.html", ctx)
+
+
+def build_search_available() -> bool:
+    from chubb_ci.agent.search import build_search
+
+    return getattr(build_search(get_settings()), "available", False)
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -236,6 +393,65 @@ def notifications() -> JSONResponse:
     return JSONResponse({"items": items[:8], "unread": len(feed)})
 
 
+_IMG_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+            "image/gif": ".gif", "image/avif": ".avif"}
+_MAX_IMG_BYTES = 5_000_000
+
+
+def _img_url_safe(url: str) -> bool:
+    """SSRF guard: only http(s), and never internal/loopback/private hosts."""
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return False
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    if host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local"):
+        return False
+    try:
+        if ipaddress.ip_address(host).is_private:
+            return False
+    except ValueError:
+        pass  # a domain name (marketplace CDN) — allowed
+    return True
+
+
+@app.get("/api/img")
+def image_proxy(url: str) -> Response:
+    """Fetch + cache a product image (dodges marketplace hotlink/referer 403s)."""
+    if not _img_url_safe(url):
+        return Response(status_code=400)
+    settings = get_settings()
+    cache_dir = settings.data_path / "img_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256(url.encode()).hexdigest()[:24]
+
+    for existing in cache_dir.glob(f"{digest}.*"):
+        return FileResponse(existing, headers={"Cache-Control": "public, max-age=604800"})
+
+    import httpx
+
+    parsed = urlparse(url)
+    referer = f"{parsed.scheme}://{parsed.netloc}/"
+    try:
+        with httpx.Client(timeout=15, follow_redirects=True) as client:
+            resp = client.get(url, headers={
+                "User-Agent": settings.user_agent, "Referer": referer,
+                "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
+            })
+            resp.raise_for_status()
+    except Exception:  # noqa: BLE001 - broken image → 404, template shows fallback icon
+        return Response(status_code=404)
+
+    ctype = resp.headers.get("content-type", "").split(";")[0].strip()
+    if ctype not in _IMG_EXT or len(resp.content) > _MAX_IMG_BYTES:
+        return Response(status_code=415)
+    path = cache_dir / f"{digest}{_IMG_EXT[ctype]}"
+    path.write_bytes(resp.content)
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=604800"})
+
+
 @app.get("/api/export/products.csv")
 def export_products_csv() -> StreamingResponse:
     with session_scope(get_settings()) as session:
@@ -245,7 +461,7 @@ def export_products_csv() -> StreamingResponse:
     cols = ["company", "product_name", "category", "price", "prev_price", "diff_pct",
             "promotion", "gb_grade", "capacity_l", "weight_kg", "fire_hours",
             "security_score", "price_per_l", "price_per_kg", "lead_time_days",
-            "status_label", "last_updated"]
+            "sales_volume", "status_label", "product_url", "image_url", "last_updated"]
     writer = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(rows)
@@ -258,8 +474,198 @@ def export_products_csv() -> StreamingResponse:
 
 
 # =========================================================================
+# Product editing (产品情报 is mutable) + 手动录入 ingest
+# =========================================================================
+_PRODUCT_STR_FIELDS = ("product_name", "company", "category", "series", "channel",
+                       "promotion", "gb_grade", "euro_grade", "fire_rating", "lock_type",
+                       "availability", "status_label", "image_url", "product_url")
+_PRODUCT_NUM_FIELDS = ("price", "capacity_l", "weight_kg", "width_mm", "depth_mm",
+                       "height_mm", "fire_hours", "security_score", "lead_time_days",
+                       "sales_volume")
+
+
+def _apply_product_fields(rec, body: dict) -> None:
+    """Apply whitelisted fields to a ProductRecord + recompute derived metrics."""
+    from chubb_ci.diff.matching import model_code, normalize_product_key
+    from chubb_ci.normalize import fire_hours, security_score, volume_l
+
+    for f in _PRODUCT_STR_FIELDS:
+        if f in body:
+            v = (str(body[f]).strip() or None) if body[f] is not None else None
+            setattr(rec, f, v if f != "product_name" else (v or rec.product_name))
+    for f in _PRODUCT_NUM_FIELDS:
+        if f in body:
+            v = body[f]
+            if v in (None, ""):
+                setattr(rec, f, None)
+            else:
+                try:
+                    num = float(str(v).replace("¥", "").replace(",", ""))
+                except ValueError:
+                    continue
+                setattr(rec, f, int(num) if f in ("security_score", "lead_time_days",
+                                                  "sales_volume") else num)
+    # keys + derived metrics follow the edited values (same rules as crawl ingest)
+    rec.product_key = normalize_product_key(rec.product_name)
+    rec.model_code = model_code(rec.product_name)
+    if "capacity_l" not in body:
+        rec.capacity_l = rec.capacity_l or volume_l(rec.width_mm, rec.depth_mm, rec.height_mm)
+    if "fire_hours" not in body and rec.fire_rating:
+        rec.fire_hours = rec.fire_hours or fire_hours(rec.fire_rating)
+    if "security_score" not in body and (rec.gb_grade or rec.euro_grade):
+        rec.security_score = rec.security_score or security_score(rec.gb_grade, rec.euro_grade)
+
+
+@app.post("/api/products")
+async def create_product(request: Request) -> JSONResponse:
+    """手动录入: create a product record (channel 手动录入, no snapshot)."""
+    from chubb_ci.schemas.models import ProductRecord
+
+    body = await request.json()
+    if not (body.get("product_name") or "").strip():
+        return JSONResponse({"error": "product_name 必填"}, status_code=400)
+    rec = ProductRecord(source_name="manual", channel="手动录入",
+                        company=(body.get("company") or "").strip() or "未知品牌",
+                        product_name=body["product_name"].strip(), category="保险柜")
+    _apply_product_fields(rec, body)
+    with session_scope(get_settings()) as session:
+        session.add(rec)
+        session.flush()
+        pid = rec.id
+    return JSONResponse({"status": "ok", "id": pid})
+
+
+@app.patch("/api/products/{pid}")
+async def update_product(pid: int, request: Request) -> JSONResponse:
+    from chubb_ci.schemas.models import ProductRecord
+
+    body = await request.json()
+    with session_scope(get_settings()) as session:
+        rec = session.get(ProductRecord, pid)
+        if rec is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        _apply_product_fields(rec, body)
+        session.add(rec)
+    return JSONResponse({"status": "ok", "id": pid})
+
+
+@app.delete("/api/products/{pid}")
+def delete_product(pid: int) -> JSONResponse:
+    """Delete a product — removes ALL history rows for (company, product_key), else an
+    older snapshot of the same product would immediately resurface in the list."""
+    from sqlmodel import select
+
+    from chubb_ci.schemas.models import ProductRecord
+
+    with session_scope(get_settings()) as session:
+        rec = session.get(ProductRecord, pid)
+        if rec is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        rows = session.exec(select(ProductRecord).where(
+            ProductRecord.company == rec.company,
+            ProductRecord.product_key == rec.product_key)).all()
+        for r in rows:
+            session.delete(r)
+    return JSONResponse({"status": "ok", "deleted": len(rows)})
+
+
+@app.post("/api/ingest/parse")
+async def ingest_parse(request: Request) -> JSONResponse:
+    """Paste text → LLM identifies structured product fields (nothing is saved yet)."""
+    from chubb_ci.config.sources import PageType, Source
+    from chubb_ci.extractor.extractor import extract_products
+    from chubb_ci.llm.factory import build_llm, resolve_model
+
+    body = await request.json()
+    text = (body.get("text") or "").strip()
+    if len(text) < 10:
+        return JSONResponse({"error": "请粘贴至少 10 个字符的产品描述"}, status_code=400)
+    settings = get_settings()
+    source = Source(name="manual-ingest", company=(body.get("company") or "").strip() or "未知品牌",
+                    urls=["manual://paste"], page_type=PageType.PRODUCT, channel="手动录入")
+    try:
+        result = extract_products(
+            build_llm(settings), model=resolve_model(settings, "extract"), source=source,
+            url="manual://paste", page_text=text[: settings.max_extract_chars],
+            domain_context=settings.load_domain_context(),
+            temperature=settings.llm_temperature)
+    except Exception as exc:  # noqa: BLE001 - surface LLM/config errors to the UI
+        return JSONResponse({"error": str(exc)}, status_code=502)
+    if not result.ok:
+        return JSONResponse({"error": result.error or "识别失败"}, status_code=502)
+    return JSONResponse({"products": [p.model_dump() for p in result.products]})
+
+
+_UPLOAD_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+                 "image/gif": ".gif"}
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
+@app.post("/api/upload")
+async def upload_image(request: Request) -> JSONResponse:
+    """Save a pasted/selected product image (base64 data-URL) → /uploads/<sha>.<ext>."""
+    import base64
+
+    body = await request.json()
+    data = body.get("data") or ""
+    mime = "image/jpeg"
+    if data.startswith("data:"):
+        head, _, data = data.partition(",")
+        mime = head.split(":", 1)[1].split(";", 1)[0].strip().lower()
+    if mime not in _UPLOAD_TYPES:
+        return JSONResponse({"error": f"不支持的图片类型: {mime}"}, status_code=415)
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "无效的图片数据"}, status_code=400)
+    if not raw or len(raw) > _MAX_UPLOAD_BYTES:
+        return JSONResponse({"error": "图片为空或超过 5MB"}, status_code=413)
+    settings = get_settings()
+    updir = settings.data_path / "uploads"
+    updir.mkdir(parents=True, exist_ok=True)
+    fname = hashlib.sha256(raw).hexdigest()[:16] + _UPLOAD_TYPES[mime]
+    (updir / fname).write_bytes(raw)
+    return JSONResponse({"url": f"/uploads/{fname}"})
+
+
+@app.get("/uploads/{fname}")
+def serve_upload(fname: str):
+    """Serve manually-uploaded product images (single flat dir, no traversal)."""
+    settings = get_settings()
+    path = settings.data_path / "uploads" / Path(fname).name
+    if not path.is_file():
+        return Response(status_code=404)
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=604800"})
+
+
+# =========================================================================
 # Agent (Phase C)
 # =========================================================================
+def _safe_ingest_path(raw: str | None) -> tuple[bool, str]:
+    """Restrict ingest to .pptx/.pdf inside the repo root or the uploads dir.
+
+    The path comes from the client, so it must be confined — never ingest an arbitrary
+    server file. Accepts a bare filename (resolved against those dirs) or a full path
+    that lands inside them.
+    """
+    if not raw:
+        return False, ""
+    root = Path(__file__).resolve().parents[2]
+    updir = (get_settings().data_path / "uploads").resolve()
+    allowed = [root.resolve(), updir]
+    candidate = Path(raw)
+    tries = [candidate] if candidate.is_absolute() else [root / raw, updir / raw]
+    for p in tries:
+        try:
+            rp = p.resolve()
+        except (OSError, RuntimeError):
+            continue
+        if (rp.suffix.lower() in (".pptx", ".pdf") and rp.is_file()
+                and any(rp == base or base in rp.parents for base in allowed)):
+            return True, str(rp)
+    return False, ""
+
+
 @app.post("/api/agent/start")
 async def agent_start(request: Request) -> JSONResponse:
     """Start an agent workflow in the background; returns the run id."""
@@ -269,11 +675,20 @@ async def agent_start(request: Request) -> JSONResponse:
     workflow = (body.get("workflow") or "").strip()
     if workflow not in WORKFLOWS:
         return JSONResponse({"error": f"workflow must be one of {WORKFLOWS}"}, status_code=400)
-    params = {k: v for k, v in body.items() if k in ("brand", "url", "goal", "path") and v}
+    params = {k: v for k, v in body.items()
+              if k in ("brand", "url", "goal", "path", "product_id") and v is not None and v != ""}
     if workflow == "research" and not params.get("brand"):
         return JSONResponse({"error": "research 需要 brand"}, status_code=400)
-    if workflow == "ingest" and not params.get("path"):
-        return JSONResponse({"error": "ingest 需要 path"}, status_code=400)
+    if workflow == "ingest":
+        ok, resolved = _safe_ingest_path(params.get("path"))
+        if not ok:
+            return JSONResponse({"error": "ingest 需要有效的 pptx/pdf 文件"}, status_code=400)
+        params["path"] = resolved
+    if workflow == "enrich":
+        try:
+            params["product_id"] = int(params["product_id"])
+        except (KeyError, TypeError, ValueError):
+            return JSONResponse({"error": "enrich 需要有效的 product_id"}, status_code=400)
     run_id = start_workflow(get_settings(), workflow, params, background=True)
     return JSONResponse({"run_id": run_id})
 
@@ -402,13 +817,53 @@ async def agent_fact_review(fact_id: int, request: Request) -> JSONResponse:
 
 @app.get("/api/agent/files")
 def agent_files() -> JSONResponse:
-    """Ingestable documents (pptx/pdf) in the project root."""
+    """Ingestable documents (pptx/pdf) in the project root + uploads dir."""
     root = Path(__file__).resolve().parents[2]
-    files = sorted(
-        p.name for p in root.iterdir()
-        if p.suffix.lower() in (".pptx", ".pdf") and p.is_file()
-    )
-    return JSONResponse({"files": files})
+    names = {p.name: str(p) for p in root.iterdir()
+             if p.suffix.lower() in (".pptx", ".pdf") and p.is_file()}
+    updir = get_settings().data_path / "uploads"
+    if updir.is_dir():
+        for p in updir.iterdir():
+            if p.suffix.lower() in (".pptx", ".pdf") and p.is_file():
+                names[p.name] = str(p)
+    return JSONResponse({"files": sorted(names), "paths": names})
+
+
+_DOC_TYPES = {
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/pdf": ".pdf",
+}
+_MAX_DOC_BYTES = 40 * 1024 * 1024
+
+
+@app.post("/api/agent/upload")
+async def agent_upload(request: Request) -> JSONResponse:
+    """Upload a PPTX/PDF (base64 data-URL) → data/uploads → returns its server path."""
+    import base64
+
+    body = await request.json()
+    data = body.get("data") or ""
+    name = (body.get("filename") or "doc").strip()
+    mime = ""
+    if data.startswith("data:"):
+        head, _, data = data.partition(",")
+        mime = head.split(":", 1)[1].split(";", 1)[0].strip().lower()
+    ext = _DOC_TYPES.get(mime) or Path(name).suffix.lower()
+    if ext not in (".pptx", ".pdf"):
+        return JSONResponse({"error": "仅支持 .pptx 或 .pdf 文件"}, status_code=415)
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "无效的文件数据"}, status_code=400)
+    if not raw or len(raw) > _MAX_DOC_BYTES:
+        return JSONResponse({"error": "文件为空或超过 40MB"}, status_code=413)
+    updir = get_settings().data_path / "uploads"
+    updir.mkdir(parents=True, exist_ok=True)
+    safe_stem = "".join(c for c in Path(name).stem if c.isalnum() or c in "-_")[:40] or "doc"
+    fname = f"{safe_stem}-{hashlib.sha256(raw).hexdigest()[:8]}{ext}"
+    path = updir / fname
+    path.write_bytes(raw)
+    return JSONResponse({"path": str(path), "filename": fname})
 
 
 @app.post("/api/trigger/{kind}")

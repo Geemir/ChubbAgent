@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ product_name }}{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-sm text-body-sm text-on-surface-variant">
+  <a href="/products" class="hover:text-primary flex items-center gap-xs"><span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>产品情报</a>
+  <span>/</span><span class="text-on-surface">{{ product_name }}</span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+  <!-- Image + key facts -->
+  <section class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col gap-md">
+    <div class="w-full aspect-square rounded-lg bg-surface-container-low flex items-center justify-center overflow-hidden">
+      {% if image_url %}
+      <img src="{% if image_url.startswith('http') %}/api/img?url={{ image_url|urlencode }}{% else %}{{ image_url }}{% endif %}"
+           class="w-full h-full object-contain"
+           onerror="this.outerHTML='<span class=\'material-symbols-outlined text-outline\' style=\'font-size:64px;\'>safe</span>'"/>
+      {% else %}<span class="material-symbols-outlined text-outline" style="font-size:64px;">safe</span>{% endif %}
+    </div>
+    <div>
+      <div class="flex items-center gap-sm flex-wrap">
+        <span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">{{ channel }}</span>
+        {% if promotion %}<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm">{{ promotion }}</span>{% endif %}
+        {% if availability %}<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">{{ availability }}</span>{% endif %}
+      </div>
+      <div class="mt-sm font-display-lg text-display-lg text-on-surface tabular-nums">
+        {% if price is not none %}¥{{ '{:,.0f}'.format(price) }}{% else %}<span class="text-on-surface-variant text-headline-md">暂无价格</span>{% endif %}
+      </div>
+      <p class="text-body-sm text-on-surface-variant mt-xs">更新于 {{ last_updated }} · 来源 {{ source_name }}</p>
+    </div>
+    <div class="flex items-center gap-sm">
+      {% if product_url %}<a href="{{ product_url }}" target="_blank" class="flex items-center gap-sm px-md py-2 rounded-lg border border-secondary text-primary text-label-md hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined" style="font-size:18px;">open_in_new</span>查看原页</a>{% endif %}
+      <button id="edit-detail" class="flex items-center gap-sm px-md py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity"><span class="material-symbols-outlined" style="font-size:18px;">edit</span>编辑</button>
+    </div>
+  </section>
+
+  <!-- Specs + history -->
+  <section class="lg:col-span-2 flex flex-col gap-gutter">
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] overflow-hidden">
+      <div class="px-lg py-md border-b border-outline-variant/30 flex items-center justify-between">
+        <h1 class="font-headline-md text-headline-md text-on-surface">{{ product_name }}</h1>
+        <span class="text-body-md text-on-surface-variant">{{ company }}</span>
+      </div>
+      {% if specs %}
+      <table class="w-full text-body-md">
+        <tbody>
+          {% for k, v in specs %}
+          <tr class="border-b border-outline-variant/30 last:border-0">
+            <td class="px-lg py-sm text-on-surface-variant w-40 bg-surface-container-low/40 font-label-md text-label-md">{{ k }}</td>
+            <td class="px-lg py-sm text-on-surface">{{ v }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="px-lg py-lg text-on-surface-variant text-body-md">暂无规格参数。可点击「编辑」手动补充，或用下方的自动搜集尝试从原页填充。</p>
+      {% endif %}
+    </div>
+
+    {% if key_features %}
+    <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)]">
+      <h2 class="font-headline-md text-headline-md text-on-surface mb-sm">卖点</h2>
+      <ul class="list-disc pl-5 space-y-xs text-body-md text-on-surface">
+        {% for f in key_features %}<li>{{ f }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if price_history|length > 1 %}
+    <div class="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-[0px_2px_8px_rgba(18,58,99,0.05)] flex flex-col">
+      <h2 class="font-headline-md text-headline-md text-on-surface mb-md">价格走势</h2>
+      <div class="min-h-[220px]"><canvas id="priceHistoryChart"></canvas></div>
+    </div>
+    {% endif %}
+
+    {% if missing_specs %}
+    <div class="bg-tertiary-fixed/20 rounded-xl p-md border border-tertiary-fixed-dim/40 flex items-start gap-sm">
+      <span class="material-symbols-outlined text-tertiary-fixed-dim">smart_toy</span>
+      <div class="flex-1">
+        <p class="font-body-md text-on-surface">尚缺 {{ missing_specs|length }} 项参数。{% if can_enrich %}可让智能体浏览已保存来源并搜索交叉验证。{% else %}该产品无可浏览链接，请先在「编辑」中补充链接。{% endif %}</p>
+        {% if can_enrich %}
+        <button id="enrich-one" class="mt-sm flex items-center gap-sm px-md py-2 bg-primary-container text-on-primary rounded-lg text-label-md hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined" style="font-size:18px;">travel_explore</span>自动搜集参数
+        </button>
+        <span id="enrich-status" class="ml-sm font-body-sm text-body-sm text-on-surface-variant"></span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script id="ph-data" type="application/json">{{ price_history|tojson }}</script>
+<script>
+(function () {
+  const ph = JSON.parse(document.getElementById('ph-data').textContent);
+  const cv = document.getElementById('priceHistoryChart');
+  if (cv && ph.length > 1 && window.Chart) {
+    new Chart(cv, {
+      type: 'line',
+      data: { labels: ph.map(p => p.date),
+              datasets: [{ label: '价格 ¥', data: ph.map(p => p.price),
+                borderColor: '#123a63', backgroundColor: 'rgba(18,58,99,.08)',
+                fill: true, tension: .2, pointRadius: 3 }] },
+      options: { responsive: true, maintainAspectRatio: false,
+                 plugins: { legend: { display: false } },
+                 scales: { y: { ticks: { callback: v => '¥' + v } } } }
+    });
+  }
+  document.getElementById('edit-detail')?.addEventListener('click', () => {
+    location.href = '/products#edit-' + {{ id }};
+  });
+  // Automated spec collection for THIS product via the enrichment agent.
+  const btn = document.getElementById('enrich-one');
+  btn?.addEventListener('click', async () => {
+    const status = document.getElementById('enrich-status');
+    btn.disabled = true; status.textContent = '智能体浏览中…';
+    try {
+      const res = await fetch('/api/agent/start', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workflow: 'enrich', product_id: {{ id }} }) });
+      const json = await res.json();
+      if (!res.ok) { status.textContent = '启动失败：' + (json.error || res.status); btn.disabled = false; return; }
+      status.innerHTML = '已启动 · <a class="text-primary underline" href="/research-agent">查看进度</a>，完成后刷新本页';
+    } catch (e) { status.textContent = '启动失败：' + e.message; btn.disabled = false; }
+  });
+})();
+</script>
+{% endblock %}

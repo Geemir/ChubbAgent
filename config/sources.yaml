@@ -33,18 +33,157 @@ defaults:
   page_type: product
 
 sources:
-  # ============================ VERIFIED 官网 (live) ========================
-  # 永发 Yongfa — Ningbo Yongfa Group, landmark CN safe brand. Static, UTF-8. Verified.
-  - name: yongfa-products
+  # ======================= 官网 CATALOG SPIDER (full range) ==================
+  # crawl_catalog=true → follow product-detail links from each listing/category page and
+  # extract EVERY product (name + official image + specs from the detail spec table).
+  # No price on 官网; goal is complete product coverage. selectors.product_href marks
+  # detail links; selectors.image/name are optional card hints.
+  #
+  # 艾谱 AIPU — aipuindustrial.com (export site). Static, English spec tables
+  # (Model/External size(mm)/N.W.(kgs)). Categories /products/1..23.html →
+  # /products-info/N.html details. ~55 products, images under /uploads/images/.
+  - name: aipu-catalog
+    company: 艾谱 AIPU
+    enabled: true
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    crawl_catalog: true
+    enrich_details: true
+    selectors:
+      product_href: 'products-info/\d+'
+    urls:
+      - https://aipuindustrial.com/products/1.html
+      - https://aipuindustrial.com/products/2.html
+      - https://aipuindustrial.com/products/3.html
+      - https://aipuindustrial.com/products/4.html
+      - https://aipuindustrial.com/products/5.html
+      - https://aipuindustrial.com/products/6.html
+      - https://aipuindustrial.com/products/7.html
+      - https://aipuindustrial.com/products/8.html
+      - https://aipuindustrial.com/products/9.html
+      - https://aipuindustrial.com/products/10.html
+      - https://aipuindustrial.com/products/11.html
+      - https://aipuindustrial.com/products/12.html
+      - https://aipuindustrial.com/products/13.html
+      - https://aipuindustrial.com/products/14.html
+      - https://aipuindustrial.com/products/15.html
+      - https://aipuindustrial.com/products/16.html
+      - https://aipuindustrial.com/products/17.html
+      - https://aipuindustrial.com/products/18.html
+      - https://aipuindustrial.com/products/19.html
+      - https://aipuindustrial.com/products/20.html
+      - https://aipuindustrial.com/products/21.html
+      - https://aipuindustrial.com/products/22.html
+      - https://aipuindustrial.com/products/23.html
+    notes: 艾谱官网（出口站）全品类爬取。静态，英文规格表 → 尺寸/重量/型号；官网图片。约55款。
+
+  # 福美德 Format — format-tresorbau.de. Static WordPress catalog; /produkte/ lists all
+  # /produkt/produktserie-* series (67), each with a security grade (Grad N/0..VI).
+  - name: format-catalog
+    company: 福美德 Format
+    enabled: true
+    fetcher: static
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    crawl_catalog: true
+    enrich_details: true          # detail pages carry the product photo (listing has none)
+    catalog_max_pages: 80
+    selectors:
+      product_href: '/produkt/'
+    urls:
+      - https://www.format-tresorbau.de/produkte/
+    notes: 福美德官网全系列（LIBRA/LYRA/ORION/GEMINI/TOPAS/RUBIN/PEGASUS…，含安全等级）。静态；详情页取官网图。
+
+  # 永发 Yongfa — 上海永发 yongfash.com（与集团站 yongfagroup 不同；此站产品可爬）。静态。
+  # /pro/56_1..9.html 分页列表 → /pro/NNNNN.html 商品详情（5位ID）。列表已带名称+官网图。
+  - name: yongfa-catalog
     company: 永发 Yongfa
     enabled: true
     fetcher: static
     page_type: product
     channel: 官网
+    frequency: weekly
+    crawl_catalog: true
+    enrich_details: false
+    selectors:
+      product_href: '/pro/\d{4,}\.html'
+    urls:
+      - http://www.yongfash.com/pro/56_1.html
+      - http://www.yongfash.com/pro/56_2.html
+      - http://www.yongfash.com/pro/56_3.html
+      - http://www.yongfash.com/pro/56_4.html
+      - http://www.yongfash.com/pro/56_5.html
+      - http://www.yongfash.com/pro/56_6.html
+      - http://www.yongfash.com/pro/56_7.html
+      - http://www.yongfash.com/pro/56_8.html
+      - http://www.yongfash.com/pro/56_9.html
+    notes: 上海永发官网保险箱分类（56，9页）。约74款，名称+官网图。
+
+  # 迪堡 Diebold — dieboldsafe.com.cn. JS site; category productlist.php?ClassID=1..13 →
+  # product_view.php?ProductID=* cards (names+images). Detail specs load via AJAX (not in
+  # DOM) so enrich_details is off — we capture name + official image, best-effort.
+  - name: diebold-catalog
+    company: 迪堡 Diebold
+    enabled: true
+    fetcher: browser
+    page_type: product
+    channel: 官网
+    frequency: weekly
+    crawl_catalog: true
+    enrich_details: false
+    browser_wait_ms: 5000
+    selectors:
+      product_href: 'product_view\.php'
+    urls:
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=1
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=2
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=3
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=4
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=5
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=6
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=7
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=8
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=9
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=10
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=11
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=12
+      - http://www.dieboldsafe.com.cn/productlist.php?ClassID=13
+    notes: 迪堡官网各品类（1-13）。JS 站，商详规格走 AJAX 不入 DOM → 仅取名称+官网图片，尽力而为。
+
+  # ZOL 中关村在线「保险柜」聚合榜 — detail.zol.com.cn/strongbox/. 跨品牌型号+图片（得力/虎牌/
+  # 艾谱/迪堡/欧奈斯…，名称即含品牌+型号）。JS 反爬「防刷验证」需 ~9s 才放行 → browser_wait_ms。
+  # 多品牌来源，故 channel=ZOL、company 为聚合标签；型号由 model_code 从名称抽取。
+  - name: zol-strongbox
+    company: ZOL 聚合榜
+    enabled: true
+    fetcher: browser
+    page_type: product
+    channel: ZOL
+    frequency: weekly
+    crawl_catalog: true
+    enrich_details: false
+    browser_wait_ms: 9000
+    selectors:
+      product_href: 'strongbox/index\d+\.shtml'
+    urls:
+      - https://detail.zol.com.cn/strongbox/
+    notes: ZOL 保险柜聚合榜首页（约49款，跨品牌型号+图片）。名称含品牌，model_code 自动抽取。
+
+  # ============================ VERIFIED 官网 (live) ========================
+  # 永发 Yongfa — Ningbo Yongfa Group, landmark CN safe brand. Static, UTF-8. Verified.
+  - name: yongfa-products
+    company: 永发 Yongfa
+    enabled: false        # superseded by yongfa-catalog (yongfash.com); this JS hub only
+    fetcher: static       # yielded ~16 empty series-names with no specs/images.
+    page_type: product
+    channel: 官网
     frequency: daily
     urls:
       - https://www.yongfagroup.com/products.html
-    notes: 产品中心（保险柜/防火箱/金库门/枪柜等系列）。官网不含价格，用于产品线与新品监控。
+    notes: （停用）集团站产品页为 JS 分类墙，仅出系列名。已由 yongfa-catalog（上海永发站）取代。
 
   - name: yongfa-news
     company: 永发 Yongfa
@@ -72,7 +211,7 @@ sources:
   # ============== PPTX 重点品牌 官网 (verify URL, then enable) ===============
   - name: burgwachter-global
     company: 德国百卫特 Burg Wächter
-    enabled: false
+    enabled: true
     fetcher: static
     page_type: product
     channel: 官网
@@ -83,7 +222,7 @@ sources:
 
   - name: sentrysafe-official
     company: 善卫 SentrySafe
-    enabled: false
+    enabled: true
     fetcher: static
     page_type: product
     channel: 官网
@@ -94,7 +233,7 @@ sources:
 
   - name: format-official
     company: 福美德 Format
-    enabled: false
+    enabled: true
     fetcher: static
     page_type: product
     channel: 官网
@@ -116,7 +255,13 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E5%BE%97%E5%8A%9B%E4%BF%9D%E9%99%A9%E6%9F%9C/
-    notes: 苏宁搜索「得力保险柜」。实测有价格瓦片；得力在苏宁品牌筛选中确认在售。
+    # 苏宁瓦片选择器（实测）——供 tile 解析器提取 名称/价格/图片/链接
+    selectors: &suning_sel
+      item: .product-box
+      price: .price-box
+      image: img
+      link: a
+    notes: 苏宁搜索「得力保险柜」。实测瓦片解析出价格+图片+详情链接。
 
   - name: aipu-suning-search
     company: 艾谱 AIPU
@@ -127,6 +272,7 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E8%89%BE%E8%B0%B1%E4%BF%9D%E9%99%A9%E7%AE%B1/
+    selectors: *suning_sel
     notes: 苏宁搜索「艾谱保险箱」。
 
   # 苏宁实际在售的国产品牌（品牌筛选确认：得力/甬康达/虎王/驰球）——真实价格覆盖
@@ -139,6 +285,7 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E7%94%AC%E5%BA%B7%E8%BE%BE%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    selectors: *suning_sel
     notes: 苏宁搜索「甬康达保险柜」。苏宁在售国产品牌，真实价格。
 
   - name: huwang-suning-search
@@ -150,6 +297,7 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E8%99%8E%E7%8E%8B%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    selectors: *suning_sel
     notes: 苏宁搜索「虎王保险柜」。苏宁在售国产品牌。
 
   - name: chiqiu-suning-search
@@ -161,6 +309,7 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E9%A9%B0%E7%90%83%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    selectors: *suning_sel
     notes: 苏宁搜索「驰球保险柜」。苏宁在售国产品牌。
 
   - name: tiger-suning-search
@@ -172,19 +321,140 @@ sources:
     frequency: daily
     urls:
       - https://search.suning.com/%E8%99%8E%E7%89%8C%E4%BF%9D%E9%99%A9%E6%9F%9C/
+    selectors: *suning_sel
     notes: 苏宁搜索「虎牌保险柜」。苏宁在售品牌为「虎王」，虎牌存在性待确认后启用。
 
-  # 京东搜索需登录（2026-07 实测手机号验证墙），保留模板等待 cookie 方案。
+  # ============= 京东（需登录态）：先 `chubb-ci login jd` 再启用 =============
+  # 京东搜索有手机验证墙；注入登录 cookie 后可用。选择器为京东搜索页标准结构。
   - name: yongfa-jd-search
     company: 永发 Yongfa
-    enabled: false
+    enabled: true
     fetcher: browser
     page_type: pricing
     channel: 京东
     frequency: daily
     urls:
       - https://search.jd.com/Search?keyword=%E6%B0%B8%E5%8F%91%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
-    notes: 京东搜索登录墙（实测 blocked，管道会优雅跳过）。生产方案：注入企业账号 cookie 后启用。
+    enrich_details: true    # JD 商详页规格参数在 DOM 中，可补全 尺寸/重量/认证
+    selectors: &jd_sel
+      item: li.gl-item
+      name: .p-name em
+      price: .p-price
+      image: .p-img img
+      link: .p-name a
+      sales: .p-commit strong
+    notes: 京东搜索「永发保险柜」。需先 `chubb-ci login jd`（扫码）保存登录态后启用。
+
+  - name: aipu-jd-search
+    company: 艾谱 AIPU
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E8%89%BE%E8%B0%B1%E4%BF%9D%E9%99%A9%E7%AE%B1&enc=utf-8
+    selectors: *jd_sel
+    notes: 京东搜索「艾谱保险箱」。需登录态。
+
+  # 这些品牌苏宁已有真实价格 → 同步京东搜索，登录后按 model_code 自动跨平台并排比价。
+  - name: deli-jd-search
+    company: 得力 Deli
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E5%BE%97%E5%8A%9B%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
+    enrich_details: true
+    selectors: *jd_sel
+    notes: 京东搜索「得力保险柜」。与苏宁得力同型号可并排比价。需登录态。
+
+  - name: yongkangda-jd-search
+    company: 甬康达 Yongkangda
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E7%94%AC%E5%BA%B7%E8%BE%BE%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
+    enrich_details: true
+    selectors: *jd_sel
+    notes: 京东搜索「甬康达保险柜」。与苏宁甬康达同型号可并排比价。需登录态。
+
+  - name: huwang-jd-search
+    company: 虎王 Huwang
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E8%99%8E%E7%8E%8B%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
+    enrich_details: true
+    selectors: *jd_sel
+    notes: 京东搜索「虎王保险柜」。与苏宁虎王同型号可并排比价。需登录态。
+
+  - name: chiqiu-jd-search
+    company: 驰球 CIIQ
+    enabled: true
+    fetcher: browser
+    page_type: pricing
+    channel: 京东
+    frequency: daily
+    urls:
+      - https://search.jd.com/Search?keyword=%E9%A9%B0%E7%90%83%E4%BF%9D%E9%99%A9%E6%9F%9C&enc=utf-8
+    enrich_details: true
+    selectors: *jd_sel
+    notes: 京东搜索「驰球保险柜」。与苏宁驰球同型号可并排比价。需登录态。
+
+  # ============= 天猫（需登录态，反爬更强，尽力而为）======================
+  - name: yongfa-tmall-search
+    company: 永发 Yongfa
+    enabled: false
+    fetcher: browser
+    page_type: pricing
+    channel: 天猫
+    frequency: daily
+    urls:
+      - https://list.tmall.com/search_product.htm?q=%E6%B0%B8%E5%8F%91%E4%BF%9D%E9%99%A9%E6%9F%9C
+    enrich_details: true
+    selectors: &tmall_sel
+      item: .product
+      name: .productTitle a
+      price: .productPrice
+      image: .productImg img
+      link: .productImg
+      sales: .productStatus span em
+    notes: 天猫搜索「永发保险柜」。需先 `chubb-ci login taobao`；反爬强，选择器可能需按登录后页面微调。
+
+  - name: deli-tmall-search
+    company: 得力 Deli
+    enabled: false
+    fetcher: browser
+    page_type: pricing
+    channel: 天猫
+    frequency: daily
+    urls:
+      - https://list.tmall.com/search_product.htm?q=%E5%BE%97%E5%8A%9B%E4%BF%9D%E9%99%A9%E6%9F%9C
+    enrich_details: true
+    selectors: *tmall_sel
+    notes: 天猫搜索「得力保险柜」。需登录态；与苏宁/京东得力同型号可三方比价。
+
+  - name: aipu-tmall-search
+    company: 艾谱 AIPU
+    enabled: false
+    fetcher: browser
+    page_type: pricing
+    channel: 天猫
+    frequency: daily
+    urls:
+      - https://list.tmall.com/search_product.htm?q=%E8%89%BE%E8%B0%B1%E4%BF%9D%E9%99%A9%E7%AE%B1
+    enrich_details: true
+    selectors: *tmall_sel
+    notes: 天猫搜索「艾谱保险箱」。需登录态。
 
   # ============================== OFFLINE DEMO =============================
   # frequency=manual → excluded from scheduled daily/weekly runs. Used by `crawl --demo`.

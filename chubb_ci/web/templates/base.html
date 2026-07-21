@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>{% block title %}ChubbAgent{% endblock %} · 集宝竞争情报</title>
+<title>{% block title %}ChubbSafes{% endblock %} · ChubbSafes 竞品监测</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -82,21 +82,19 @@
   ("reports", "/reports", "description", "每日报告", True),
   ("competitors", "/competitors", "analytics", "竞争对手", True),
   ("products", "/products", "inventory_2", "产品情报", True),
+  ("pricecmp", "/price-comparison", "price_check", "多平台比价", True),
   ("benchmark", "/benchmark", "compare_arrows", "对标分析", True),
-  ("marketmap", "/market-map", "scatter_plot", "市场地图", True),
-  ("promotions", "/promotions", "campaign", "促销活动", True),
-  ("price", "/price-changes", "payments", "价格变动", True),
-  ("trends", "/market-trends", "trending_up", "市场趋势", True),
+  ("market", "/market", "monitoring", "市场情况", True),
   ("agent", "/research-agent", "smart_toy", "研究智能体", True),
 ] %}
 <!-- Sidebar -->
 <nav class="hidden md:flex flex-col py-md fixed left-0 top-0 h-full w-64 bg-primary shadow-sm z-50">
   <div class="px-lg pb-lg flex flex-col items-center border-b border-surface-variant/20 mb-md">
-    <div class="w-14 h-14 rounded-full bg-secondary-container mb-sm flex items-center justify-center">
-      <span class="material-symbols-outlined text-primary" style="font-size:30px;font-variation-settings:'FILL' 1;">shield_lock</span>
+    <div class="w-full rounded-lg bg-white px-md py-sm mb-sm flex items-center justify-center">
+      <img src="/static/chubbsafes-logo.png" alt="ChubbSafes" class="h-8 w-auto object-contain"
+           onerror="this.parentElement.outerHTML='&lt;div class=&quot;w-14 h-14 rounded-full bg-secondary-container mb-sm flex items-center justify-center&quot;&gt;&lt;span class=&quot;material-symbols-outlined text-primary&quot; style=&quot;font-size:30px;font-variation-settings:\'FILL\' 1;&quot;&gt;shield_lock&lt;/span&gt;&lt;/div&gt;'"/>
     </div>
-    <h1 class="font-headline-md text-headline-md font-bold text-on-primary">ChubbAgent</h1>
-    <p class="font-label-sm text-label-sm text-on-primary/70 mt-xs">集宝 · 竞争情报</p>
+    <p class="font-label-md text-label-md text-on-primary/80 mt-xs tracking-wider">竞品监测</p>
   </div>
   <div class="flex-1 overflow-y-auto px-xs">
     <ul class="space-y-xs">
@@ -127,7 +125,7 @@
 <!-- Main -->
 <div class="flex-1 md:ml-64 flex flex-col h-full relative overflow-hidden">
   <header class="flex justify-between items-center w-full px-lg py-sm sticky top-0 z-40 bg-surface border-b border-outline-variant shadow-sm">
-    <span class="font-headline-md text-headline-md font-bold text-primary hidden md:block">ChubbAgent</span>
+    <span class="font-headline-md text-headline-md font-bold text-primary hidden md:block whitespace-nowrap">ChubbSafes 竞品监测</span>
     <div class="flex items-center gap-md flex-1 max-w-md ml-lg">
       <div class="relative w-full">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size:20px;">search</span>
@@ -149,7 +147,6 @@
           <div id="notif-items" class="max-h-96 overflow-y-auto"></div>
         </div>
       </div>
-      <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary text-label-md ml-sm">集</div>
     </div>
   </header>
   <main class="flex-1 overflow-y-auto p-4 md:p-margin-page">

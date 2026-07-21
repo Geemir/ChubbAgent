@@ -19,7 +19,7 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from chubb_ci.agent.runtime import AgentContext, BudgetExceeded, finish_run
-from chubb_ci.agent.state import SearchHit, SourcedFact
+from chubb_ci.agent.state import SourcedFact
 from chubb_ci.agent.verify import BASE_LLM, verify_facts
 from chubb_ci.config.sources import Source
 from chubb_ci.crawler.orchestrator import fetch_and_clean, make_fetcher
@@ -280,67 +280,3 @@ def run_research(ctx: AgentContext, llm: LLMClient, search, *,
     except Exception as exc:  # noqa: BLE001
         ctx.log("评估", f"运行异常终止：{exc}")
         finish_run(ctx, status="failed", error=str(exc))
-
-
-# =========================================================================
-# Discovery flow (C4) — same loop, different extract/finalize
-# =========================================================================
-_DISCOVER_SYSTEM = """你是竞争情报侦察助手。根据搜索结果（标题/摘要/URL），找出**可能是
-保险柜/安全存储品牌或厂商**、且不在已知品牌列表中的候选。只输出 JSON：
-{"candidates": [{"name": "品牌名", "url": "官网或店铺URL", "rationale": "判断依据（一句）"}]}
-没有候选则输出 {"candidates": []}。严禁编造 URL。"""
-
-
-def run_discovery(ctx: AgentContext, llm: LLMClient, search, *, goal: str) -> None:
-    repo = Repository(ctx.session)
-    known = {b.name for b in repo.all_brands()} | {
-        p.company for p in repo.all_products()}
-    ctx.log("规划", f"发现目标：{goal}", f"已知品牌 {len(known)} 个将被排除")
-
-    if not getattr(search, "available", False):
-        ctx.log("搜索", "未配置搜索服务（CHUBB_SEARCH_PROVIDER=bocha + API key），发现模式无法联网",
-                "已生成配置说明")
-        finish_run(ctx, status="done", result_md=(
-            "# 竞品发现\n\n未配置联网搜索服务，无法执行发现任务。\n\n"
-            "在 `.env` 中配置：\n```\nCHUBB_SEARCH_PROVIDER=bocha\n"
-            "CHUBB_SEARCH_API_KEY=你的博查APIKey\n```\n后重试。"))
-        return
-
-    queries = [f"{goal} 保险柜 品牌", "智能保险柜 厂家 新品牌 2026", "家用保险箱 品牌 排行"]
-    hits: list[SearchHit] = []
-    for q in queries:
-        ctx.check_budget()
-        res = search.search(q, top_k=8)
-        ctx.log("搜索", f"检索「{q}」→ {len(res)} 条结果")
-        hits += res
-    ctx.run.iterations = 1
-
-    hits_block = "\n".join(f"- {h.title} | {h.url} | {h.snippet[:100]}" for h in hits[:24])
-    try:
-        resp = ctx.track(llm.complete(
-            system=_DISCOVER_SYSTEM,
-            user=f"已知品牌（排除）：{('、'.join(sorted(known)))[:800]}\n\n搜索结果：\n{hits_block}",
-            model=resolve_model(ctx.settings, "daily"), json_mode=True))
-        import json as _json
-
-        start, end = resp.content.find("{"), resp.content.rfind("}")
-        candidates = _json.loads(resp.content[start:end + 1]).get("candidates", [])
-    except Exception as exc:  # noqa: BLE001
-        ctx.log("抽取", f"候选提取失败：{exc}")
-        candidates = []
-    ctx.log("抽取", f"识别出 {len(candidates)} 个候选新品牌")
-
-    for c in candidates:
-        ctx.add_pending_fact(
-            subject=c.get("name", "?"), field="discovery",
-            value=c.get("url", ""), claim=f"候选新竞品：{c.get('name')}（{c.get('rationale','')}）",
-            sources=[c.get("url", "")], confidence=0.5, status="pending")
-    ctx.run.facts_total = ctx.run.facts_pending = len(candidates)
-    ctx.log("核查", f"{len(candidates)} 个候选进入人工确认队列（采纳后可加入 brands.yaml/sources.yaml）")
-
-    lines = [f"# 竞品发现报告", "", f"目标：{goal}", "", "## 候选品牌", ""]
-    for c in candidates:
-        lines.append(f"- **{c.get('name')}** — {c.get('url')}\n  - {c.get('rationale','')}")
-    if not candidates:
-        lines.append("（本轮未发现未跟踪的新品牌）")
-    finish_run(ctx, result_md="\n".join(lines))
